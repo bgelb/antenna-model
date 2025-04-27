@@ -3,6 +3,14 @@ from typing import List, Dict, Any, Optional, Tuple
 import math
 import re
 
+def feet_to_meters(feet: float) -> float:
+    """Convert feet to meters."""
+    return feet * 0.3048
+
+def meters_to_feet(meters: float) -> float:
+    """Convert meters to feet."""
+    return meters / 0.3048
+
 class AntennaModel:
     """
     Represents an antenna model as a set of wires in relative position.
@@ -44,11 +52,11 @@ def build_dipole_model(
 def resonant_dipole_length(freq_mhz: float) -> float:
     """
     Return the ARRL handbook resonant half-wave dipole length (meters) for a given frequency (MHz):
-    length = (468 / freq_mhz) [ft] * 0.3048
+    length = (468 / freq_mhz) [ft] converted to meters
     This formula accounts for typical end effects and is more accurate for real wire antennas than the ideal physics formula.
     """
     length_ft = 468 / freq_mhz
-    return length_ft * 0.3048
+    return feet_to_meters(length_ft)
 
 def parse_impedance(output: str) -> Optional[Tuple[float, float]]:
     # Look for 'IMPEDANCE = ( R , X J)'

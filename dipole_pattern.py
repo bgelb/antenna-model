@@ -8,7 +8,7 @@ import sys
 import shlex
 import math
 import re
-from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length, get_ground_opts
+from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length, get_ground_opts, feet_to_meters, meters_to_feet
 import matplotlib.pyplot as plt
 
 def main():
@@ -27,7 +27,7 @@ def main():
     print("Height (ft) |    R (ohm) |   X (ohm)")
     print("-----------------------------------")
     for feet in heights_ft:
-        height_m = feet * 0.3048
+        height_m = feet_to_meters(feet)
         result = run_pymininec(
             model,
             freq_mhz=freq_mhz,
@@ -42,7 +42,7 @@ def main():
 
     # Also print the pattern for the default height (30 ft)
     height_ft = 30
-    height_m = height_ft * 0.3048
+    height_m = feet_to_meters(height_ft)
     print(f"\nRadiation pattern at {height_ft} ft (average ground):")
     result = run_pymininec(
         model,

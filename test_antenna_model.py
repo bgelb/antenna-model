@@ -1,14 +1,13 @@
 import pytest
-from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length
+from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length, get_ground_opts, feet_to_meters, meters_to_feet
 import re
-from antenna_model import get_ground_opts
 
 def test_resonant_dipole_length():
     f = 14.1
     l = resonant_dipole_length(f)
     # ARRL formula: 468 / f (MHz) in feet, then meters
     arrl_length_ft = 468 / f
-    arrl_length_m = arrl_length_ft * 0.3048
+    arrl_length_m = feet_to_meters(arrl_length_ft)
     assert l == pytest.approx(arrl_length_m, rel=0.0001)  # should match exactly
 
 def test_build_dipole_model():
