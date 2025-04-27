@@ -192,6 +192,36 @@ def main():
         plt.savefig('elevation_pattern_az0_all_heights.png')
         print("Saved elevation pattern plot for all heights to elevation_pattern_az0_all_heights.png")
 
+    # --- POLAR PLOT: Azimuth pattern at el=30 deg for all heights ---
+    plt.figure(figsize=(7,7))
+    ax2 = plt.subplot(111, polar=True)
+    for idx, h_m in enumerate(heights_m):
+        az_gain = az_patterns_by_height[h_m]
+        # azimuths in degrees, sorted
+        az_list = sorted(az_gain.keys())
+        gains = [az_gain[az] for az in az_list]
+        phi_rad = np.radians(az_list)
+        r_linear = [10**(g/10.0) for g in gains]
+        ax2.plot(phi_rad, r_linear, label=f'h={h_m}m', color=colors[idx % len(colors)])
+    ax2.set_theta_zero_location('E')
+    ax2.set_theta_direction(-1)
+    ax2.set_title('Azimuth Pattern (el=30°, all heights)', va='bottom')
+    ax2.set_rscale('log')
+    min_db = -40
+    max_db = int(max(max(az_gain.values()) for az_gain in az_patterns_by_height.values() if az_gain))
+    db_ticks = list(range(min_db, max_db+1, 10))
+    r_ticks = [10**(d/10.0) for d in db_ticks]
+    ax2.set_rticks(r_ticks)
+    ax2.set_yticklabels([f"{d} dB" for d in db_ticks])
+    ax2.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    if args.show_gui:
+        plt.show()
+    else:
+        plt.savefig('azimuth_pattern_el30_all_heights.png')
+        print("Saved azimuth pattern plot for all heights to azimuth_pattern_el30_all_heights.png")
+
     return
 
 if __name__ == "__main__":
