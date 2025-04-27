@@ -69,27 +69,51 @@ def test_dipole_pattern_regression():
             gain = match['gain']
             assert gain == pytest.approx(reference[(el, az)], abs=0.01), f"Gain at el={el}, az={az}: got {gain}, expected {reference[(el, az)]}"
 
+def test_dipole_impedance_5m():
+    """
+    Check feedpoint impedance of reference dipole at 5m above ground for all ground types.
+    """
+    freq = 14.1
+    height = 5.0
+    length = resonant_dipole_length(freq)
+    model = build_dipole_model(total_length=length, segments=21, radius=0.001)
+    ground_types = ["free", "poor", "average", "good"]
+    for ground in ground_types:
+        result = run_pymininec(
+            model,
+            freq_mhz=freq,
+            height_m=height,
+            ground_opts=get_ground_opts(ground),
+            excitation_pulse="10,1",
+            pattern_opts={"theta": "45,0,1", "phi": "90,0,1"},
+            option="far-field",
+        )
+        R, X = result['impedance']
+        print(f"Feedpoint impedance at 5m ({ground} ground): R={R:.5f} Ω, X={X:.5f} Ω")
+
 def test_dipole_impedance_10m():
     """
-    Check feedpoint impedance of reference dipole at 10m above ground.
+    Check feedpoint impedance of reference dipole at 10m above ground for 'free' and 'average' ground types.
     """
     freq = 14.1
     height = 10.0
     length = resonant_dipole_length(freq)
     model = build_dipole_model(total_length=length, segments=21, radius=0.001)
-    # Reference values to be filled after running
-    expected = (0.0, 0.0)  # (R, X)
-    result = run_pymininec(
-        model,
-        freq_mhz=freq,
-        height_m=height,
-        ground_opts=get_ground_opts("average"),
-        excitation_pulse="10,1",
-        pattern_opts={"theta": "45,0,1", "phi": "90,0,1"},
-        option="far-field",
-    )
-    R, X = result['impedance']
-    print(f"Feedpoint impedance at 10m: R={R:.5f} Ω, X={X:.5f} Ω (expected R={expected})")
-    if expected != (0.0, 0.0):
-        assert R == pytest.approx(expected[0], rel=0.01), f"R at 10m: got {R}, expected {expected[0]}"
-        assert X == pytest.approx(expected[1], rel=0.01), f"X at 10m: got {X}, expected {expected[1]}" 
+    ground_types = ["free", "average"]
+    # Reference values for average ground
+    expected = (68.74317, -49.64125)
+    for ground in ground_types:
+        result = run_pymininec(
+            model,
+            freq_mhz=freq,
+            height_m=height,
+            ground_opts=get_ground_opts(ground),
+            excitation_pulse="10,1",
+            pattern_opts={"theta": "45,0,1", "phi": "90,0,1"},
+            option="far-field",
+        )
+        R, X = result['impedance']
+        print(f"Feedpoint impedance at 10m ({ground} ground): R={R:.5f} Ω, X={X:.5f} Ω")
+        if ground == "average":
+            assert R == pytest.approx(expected[0], rel=0.01), f"R at 10m: got {R}, expected {expected[0]}"
+            assert X == pytest.approx(expected[1], rel=0.01), f"X at 10m: got {X}, expected {expected[1]}" 
