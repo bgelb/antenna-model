@@ -3,10 +3,12 @@ from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_len
 import re
 
 def test_resonant_dipole_length():
-    l = resonant_dipole_length(14.1)
-    c = 299792458.0
-    wl = c / (14.1e6)
-    assert l == pytest.approx(wl / 2.0)
+    f = 14.1
+    l = resonant_dipole_length(f)
+    # ARRL formula: 468 / f (MHz) in feet, then meters
+    arrl_length_ft = 468 / f
+    arrl_length_m = arrl_length_ft * 0.3048
+    assert l == pytest.approx(arrl_length_m, rel=0.0001)  # should match exactly
 
 def test_build_dipole_model():
     model = build_dipole_model(total_length=20.0, segments=21, radius=0.001)
