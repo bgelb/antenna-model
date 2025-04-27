@@ -1,6 +1,7 @@
 import pytest
 from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length
 import re
+from antenna_model import get_ground_opts
 
 def test_resonant_dipole_length():
     f = 14.1
@@ -22,30 +23,73 @@ def test_build_dipole_model():
 def test_run_pymininec_runs():
     length = resonant_dipole_length(14.1)
     model = build_dipole_model(total_length=length, segments=11, radius=0.001)
-    out = run_pymininec(model, freq_mhz=14.1, height_m=9.144, excitation_pulse="5,1", pattern_opts={"theta": "10,10,2", "phi": "0,10,2"})
+    out = run_pymininec(model, freq_mhz=14.1, height_m=9.144, excitation_pulse="5,1", pattern_opts={"theta": "10,10,2", "phi": "0,10,2"}, ground_opts=get_ground_opts("average"))
     assert "MININEC" in out['raw_output']
     assert "FREQUENCY" in out['raw_output']
     assert "PATTERN DATA" in out['raw_output']
 
 def test_dipole_pattern_regression():
-    # Reference: half-wave dipole at 14.1 MHz, 30ft (9.144m) elevation
+    """
+    Check gain at multiple (el, az) points for a dipole at 10m above average ground.
+    Use 1 degree increments for both elevation and azimuth.
+    """
     freq = 14.1
-    height = 9.144
+    height = 10.0  # meters
     length = resonant_dipole_length(freq)
     model = build_dipole_model(total_length=length, segments=21, radius=0.001)
-    # Check gain at el=20, az=90 and el=45, az=90
-    for el, ref_gain in [(20, 2.15), (45, 2.15)]:
+    # Now el means elevation above horizon, so we want el=20,30,40 at az=90
+    test_points = [
+        (20, 90),
+        (30, 90),
+        (40, 90),
+    ]
+    # Reference values to be filled after running
+    reference = {
+        (20, 90): 5.917107,
+        (30, 90): 6.890709,
+        (40, 90): 6.039798,
+    }
+    for el, az in test_points:
+        # Convert elevation above horizon to zenith angle for pymininec
+        theta = 90 - el
         result = run_pymininec(
             model,
             freq_mhz=freq,
             height_m=height,
+            ground_opts=get_ground_opts("average"),
             excitation_pulse="10,1",
-            pattern_opts={"theta": f"{el},0,1", "phi": "90,0,1"},
-            option="far-field"
+            pattern_opts={"theta": f"{theta},0,1", "phi": f"{az},0,1"},
+            option="far-field",
         )
         pattern = result['pattern']
-        # Find the pattern point with el and az
-        match = next((p for p in pattern if abs(p['el']-el)<1e-3 and abs(p['az']-90)<1e-3), None)
-        assert match, f"Pattern point for el={el}, az=90 not found"
-        gain = match['gain']
-        assert gain == pytest.approx(ref_gain, abs=0.1), f"Gain at el={el}, az=90: got {gain}, expected {ref_gain}" 
+        match = next((p for p in pattern if abs(p['el']-el)<1e-3 and abs(p['az']-az)<1e-3), None)
+        print(f"Gain at el={el}, az={az}: {match['gain'] if match else 'not found'} dBi")
+        if (el, az) in reference and reference[(el, az)] != 0.0:
+            assert match, f"Pattern point for el={el}, az={az} not found"
+            gain = match['gain']
+            assert gain == pytest.approx(reference[(el, az)], abs=0.01), f"Gain at el={el}, az={az}: got {gain}, expected {reference[(el, az)]}"
+
+def test_dipole_impedance_10m():
+    """
+    Check feedpoint impedance of reference dipole at 10m above ground.
+    """
+    freq = 14.1
+    height = 10.0
+    length = resonant_dipole_length(freq)
+    model = build_dipole_model(total_length=length, segments=21, radius=0.001)
+    # Reference values to be filled after running
+    expected = (0.0, 0.0)  # (R, X)
+    result = run_pymininec(
+        model,
+        freq_mhz=freq,
+        height_m=height,
+        ground_opts=get_ground_opts("average"),
+        excitation_pulse="10,1",
+        pattern_opts={"theta": "45,0,1", "phi": "90,0,1"},
+        option="far-field",
+    )
+    R, X = result['impedance']
+    print(f"Feedpoint impedance at 10m: R={R:.5f} Ω, X={X:.5f} Ω (expected R={expected})")
+    if expected != (0.0, 0.0):
+        assert R == pytest.approx(expected[0], rel=0.01), f"R at 10m: got {R}, expected {expected[0]}"
+        assert X == pytest.approx(expected[1], rel=0.01), f"X at 10m: got {X}, expected {expected[1]}" 

@@ -43,11 +43,12 @@ def build_dipole_model(
 
 def resonant_dipole_length(freq_mhz: float) -> float:
     """
-    Return the approximate resonant half-wave dipole length (meters) for a given frequency (MHz).
+    Return the ARRL handbook resonant half-wave dipole length (meters) for a given frequency (MHz):
+    length = (468 / freq_mhz) [ft] * 0.3048
+    This formula accounts for typical end effects and is more accurate for real wire antennas than the ideal physics formula.
     """
-    c = 299792458.0
-    wavelength = c / (freq_mhz * 1e6)
-    return wavelength / 2.0
+    length_ft = 468 / freq_mhz
+    return length_ft * 0.3048
 
 def parse_impedance(output: str) -> Optional[Tuple[float, float]]:
     # Look for 'IMPEDANCE = ( R , X J)'
@@ -74,10 +75,11 @@ def parse_pattern(output: str) -> List[Dict[str, float]]:
         parts = line.strip().split()
         if len(parts) >= 5:
             try:
-                el = float(parts[0])
+                zenith = float(parts[0])
                 az = float(parts[1])
                 gain = float(parts[-1])
-                pattern.append({'el': el, 'az': az, 'gain': gain})
+                elevation = 90.0 - zenith  # convert to elevation above horizon
+                pattern.append({'el': elevation, 'az': az, 'gain': gain})
             except Exception:
                 continue
     return pattern
@@ -116,4 +118,28 @@ def run_pymininec(
         'impedance': parse_impedance(output),
         'pattern': parse_pattern(output),
         'raw_output': output
-    } 
+    }
+
+# Standard ground types for pymininec
+# Values from NEC/ARRL conventions:
+#   'poor':    εr=5,   σ=0.001 S/m
+#   'average': εr=13,  σ=0.005 S/m
+#   'good':    εr=20,  σ=0.03 S/m
+#   'free':    free space (no ground)
+def get_ground_opts(ground_type: str = "average") -> Optional[list]:
+    """
+    Return pymininec ground options for a given ground type.
+    ground_type: 'free', 'poor', 'average', 'good'
+    Returns a list of CLI args for pymininec, or None for free space.
+    """
+    ground_type = ground_type.lower()
+    if ground_type == "free":
+        return None
+    elif ground_type == "poor":
+        return ["--medium=5,0.001,0"]
+    elif ground_type == "average":
+        return ["--medium=13,0.005,0"]
+    elif ground_type == "good":
+        return ["--medium=20,0.03,0"]
+    else:
+        raise ValueError(f"Unknown ground type: {ground_type}") 
