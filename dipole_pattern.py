@@ -160,10 +160,11 @@ def main():
                 row += f"    n/a "
         print(row)
 
-    # --- POLAR PLOT: Power pattern vs Elevation for az=0, all heights ---
-    plt.figure(figsize=(7,7))
-    ax = plt.subplot(111, polar=True)
+    # --- COMBINED POLAR SUBPLOTS: Elevation and Azimuth patterns for all heights ---
+    fig, (ax1, ax2) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14,7))
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+
+    # Left: Elevation pattern at az=0
     for idx, h_m in enumerate(heights_m):
         pattern_full = full_patterns[h_m]
         pattern_full = [p for p in pattern_full if p['gain'] > -100]
@@ -172,32 +173,23 @@ def main():
         gains = [p['gain'] for p in pattern_full]
         theta_rad = np.radians(el_angles)
         r_linear = [10**(g/10.0) for g in gains]
-        ax.plot(theta_rad, r_linear, label=f'h={h_m}m', color=colors[idx % len(colors)])
-    ax.set_theta_zero_location('E')
-    ax.set_theta_direction(1)
-    ax.set_title('Elevation Pattern (az=0, all heights)', va='bottom')
-    ax.set_rscale('log')
+        ax1.plot(theta_rad, r_linear, label=f'h={h_m}m', color=colors[idx % len(colors)])
+    ax1.set_theta_zero_location('E')
+    ax1.set_theta_direction(1)
+    ax1.set_title('Elevation Pattern (az=0, all heights)', va='bottom')
+    ax1.set_rscale('log')
     min_db = -40
     max_db = int(max(max([p['gain'] for p in full_patterns[h]]) for h in heights_m))
     db_ticks = list(range(min_db, max_db+1, 10))
     r_ticks = [10**(d/10.0) for d in db_ticks]
-    ax.set_rticks(r_ticks)
-    ax.set_yticklabels([f"{d} dB" for d in db_ticks])
-    ax.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    if args.show_gui:
-        plt.show()
-    else:
-        plt.savefig('elevation_pattern_az0_all_heights.png')
-        print("Saved elevation pattern plot for all heights to elevation_pattern_az0_all_heights.png")
+    ax1.set_rticks(r_ticks)
+    ax1.set_yticklabels([f"{d} dB" for d in db_ticks])
+    ax1.grid(True)
+    ax1.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
 
-    # --- POLAR PLOT: Azimuth pattern at el=30 deg for all heights ---
-    plt.figure(figsize=(7,7))
-    ax2 = plt.subplot(111, polar=True)
+    # Right: Azimuth pattern at el=30°
     for idx, h_m in enumerate(heights_m):
         az_gain = az_patterns_by_height[h_m]
-        # azimuths in degrees, sorted
         az_list = sorted(az_gain.keys())
         gains = [az_gain[az] for az in az_list]
         phi_rad = np.radians(az_list)
@@ -207,20 +199,20 @@ def main():
     ax2.set_theta_direction(-1)
     ax2.set_title('Azimuth Pattern (el=30°, all heights)', va='bottom')
     ax2.set_rscale('log')
-    min_db = -40
-    max_db = int(max(max(az_gain.values()) for az_gain in az_patterns_by_height.values() if az_gain))
-    db_ticks = list(range(min_db, max_db+1, 10))
-    r_ticks = [10**(d/10.0) for d in db_ticks]
-    ax2.set_rticks(r_ticks)
-    ax2.set_yticklabels([f"{d} dB" for d in db_ticks])
+    max_db_az = int(max(max(az_gain.values()) for az_gain in az_patterns_by_height.values() if az_gain))
+    db_ticks_az = list(range(min_db, max_db_az+1, 10))
+    r_ticks_az = [10**(d/10.0) for d in db_ticks_az]
+    ax2.set_rticks(r_ticks_az)
+    ax2.set_yticklabels([f"{d} dB" for d in db_ticks_az])
     ax2.grid(True)
-    plt.legend()
+    ax2.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
+
     plt.tight_layout()
     if args.show_gui:
         plt.show()
     else:
-        plt.savefig('azimuth_pattern_el30_all_heights.png')
-        print("Saved azimuth pattern plot for all heights to azimuth_pattern_el30_all_heights.png")
+        plt.savefig('pattern_comparison_all_heights.png')
+        print("Saved combined pattern comparison plot to pattern_comparison_all_heights.png")
 
     return
 
