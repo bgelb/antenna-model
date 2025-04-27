@@ -8,9 +8,15 @@ import sys
 import shlex
 import math
 import re
+import argparse
+import matplotlib.pyplot as plt
+import numpy as np
 from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length, get_ground_opts, feet_to_meters, meters_to_feet
 
 def main():
+    parser = argparse.ArgumentParser(description="Dipole pattern analysis and plotting.")
+    parser.add_argument('--show-gui', action='store_true', help='Show plot in GUI window instead of saving PNG')
+    args = parser.parse_args()
     # Frequency in MHz
     freq_mhz = 14.1
     # Heights in feet to test
@@ -153,6 +159,38 @@ def main():
             else:
                 row += f"    n/a "
         print(row)
+
+    # --- POLAR PLOT: Power pattern vs Elevation for az=0, all heights ---
+    plt.figure(figsize=(7,7))
+    ax = plt.subplot(111, polar=True)
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+    for idx, h_m in enumerate(heights_m):
+        pattern_full = full_patterns[h_m]
+        pattern_full = [p for p in pattern_full if p['gain'] > -100]
+        pattern_full = sorted(pattern_full, key=lambda p: p['el'])
+        el_angles = [p['el'] for p in pattern_full]
+        gains = [p['gain'] for p in pattern_full]
+        theta_rad = np.radians(el_angles)
+        r_linear = [10**(g/10.0) for g in gains]
+        ax.plot(theta_rad, r_linear, label=f'h={h_m}m', color=colors[idx % len(colors)])
+    ax.set_theta_zero_location('E')
+    ax.set_theta_direction(1)
+    ax.set_title('Elevation Pattern (az=0, all heights)', va='bottom')
+    ax.set_rscale('log')
+    min_db = -40
+    max_db = int(max(max([p['gain'] for p in full_patterns[h]]) for h in heights_m))
+    db_ticks = list(range(min_db, max_db+1, 10))
+    r_ticks = [10**(d/10.0) for d in db_ticks]
+    ax.set_rticks(r_ticks)
+    ax.set_yticklabels([f"{d} dB" for d in db_ticks])
+    ax.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    if args.show_gui:
+        plt.show()
+    else:
+        plt.savefig('elevation_pattern_az0_all_heights.png')
+        print("Saved elevation pattern plot for all heights to elevation_pattern_az0_all_heights.png")
 
     return
 
