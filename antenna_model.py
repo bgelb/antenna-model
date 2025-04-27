@@ -1,6 +1,7 @@
 import subprocess
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import math
+import re
 
 class AntennaModel:
     """
@@ -48,6 +49,39 @@ def resonant_dipole_length(freq_mhz: float) -> float:
     wavelength = c / (freq_mhz * 1e6)
     return wavelength / 2.0
 
+def parse_impedance(output: str) -> Optional[Tuple[float, float]]:
+    # Look for 'IMPEDANCE = ( R , X J)'
+    m = re.search(r"IMPEDANCE = \( *([-.\deE]+) *, *([-.\deE]+) *J\)", output)
+    if m:
+        R = float(m.group(1))
+        X = float(m.group(2))
+        return (R, X)
+    return None
+
+def parse_pattern(output: str) -> List[Dict[str, float]]:
+    # Look for PATTERN DATA table and parse lines: theta phi ... TOTAL
+    # Return [{'el': elevation, 'az': azimuth, 'gain': gain}, ...]
+    pattern = []
+    in_table = False
+    for line in output.splitlines():
+        if not in_table:
+            if 'PATTERN DATA' in line:
+                in_table = True
+            continue
+        # skip header lines
+        if re.search(r'ZENITH|AZIMUTH|VERTICAL|HORIZONTAL|TOTAL', line):
+            continue
+        parts = line.strip().split()
+        if len(parts) >= 5:
+            try:
+                el = float(parts[0])
+                az = float(parts[1])
+                gain = float(parts[-1])
+                pattern.append({'el': el, 'az': az, 'gain': gain})
+            except Exception:
+                continue
+    return pattern
+
 def run_pymininec(
     model: AntennaModel,
     freq_mhz: float,
@@ -57,18 +91,13 @@ def run_pymininec(
     pattern_opts: Optional[Dict[str, str]] = None,
     option: str = "far-field-absolute",
     ff_distance: int = 1000,
-) -> str:
+) -> Dict[str, Any]:
     """
     Run pymininec with the given model, frequency, height, and options.
-    - model: AntennaModel (relative geometry)
-    - freq_mhz: frequency in MHz
-    - height_m: height above ground (meters)
-    - ground_opts: list of ground-related args (e.g. ["--medium", "0,0,0"])
-    - excitation_pulse: feedpoint pulse string
-    - pattern_opts: dict of pattern options (e.g. {"theta": "10,10,8", "phi": "0,0,1"})
-    - option: pymininec output option
-    - ff_distance: far-field distance (if applicable)
-    Returns the raw output as a string.
+    Returns a dict with at least:
+      - 'impedance': (R, X) tuple (ohms)
+      - 'pattern': list of dicts with keys: el, az, gain (dBi)
+      - 'raw_output': the full stdout string
     """
     cmd = ["pymininec", "-f", str(freq_mhz)]
     cmd += model.to_pymininec_args(height_m=height_m)
@@ -82,4 +111,9 @@ def run_pymininec(
         for k, v in pattern_opts.items():
             cmd += [f"--{k}", v]
     proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return proc.stdout 
+    output = proc.stdout
+    return {
+        'impedance': parse_impedance(output),
+        'pattern': parse_pattern(output),
+        'raw_output': output
+    } 
