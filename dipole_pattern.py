@@ -9,8 +9,6 @@ import shlex
 import math
 import re
 from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length, get_ground_opts, feet_to_meters, meters_to_feet
-import matplotlib.pyplot as plt
-import numpy as np
 
 def main():
     # Frequency in MHz
@@ -68,14 +66,9 @@ def main():
         db = p['gain'] - max_gain
         print(f"{theta:8.1f} | {db:7.2f}")
 
-    # Print gain at az=0 for el=10 to 80 deg in 5 deg steps, for multiple heights
+    # Print gain at az=0 for el=0 to 180 deg in 5 deg steps, for multiple heights
     heights_m = [5, 10, 15, 20]
-    el_table = list(range(10, 85, 5))
-    print("\nGain at az=0 for el=10 to 80 deg (average ground), for various heights:")
-    header = "Elevation (deg) |" + "".join([f" {h:>5} m" for h in heights_m])
-    print(header)
-    print("----------------|" + "-------" * len(heights_m))
-    # For each height, get the full pattern sweep once (1 degree resolution)
+    # Build hemisphere patterns by height
     patterns_by_height = {}
     for h_m in heights_m:
         result = run_pymininec(
@@ -88,36 +81,37 @@ def main():
             option="far-field",
         )
         # Only keep points at az=0
-        pattern = [p for p in result['pattern'] if abs(p['az']-0)<1e-3]
-        patterns_by_height[h_m] = pattern
-    # For each height, precompute the max gain and the closest table value for highlighting
-    highlight_gain = {}
+        patterns_by_height[h_m] = [p for p in result['pattern'] if abs(p['az'] - 0) < 1e-3]
+    # Mirror hemisphere data for full horizon-to-horizon cut
+    full_patterns = {}
+    for h_m, hemi in patterns_by_height.items():
+        hemi_sorted = sorted(hemi, key=lambda p: p['el'])
+        mirror = [{"el": 180 - p['el'], "gain": p['gain']} for p in hemi_sorted if p['el'] != 0.0]
+        full_patterns[h_m] = hemi_sorted + sorted(mirror, key=lambda p: p['el'])
+    # Create elevation table 0° to 180° in steps of 5°
+    el_table = list(range(0, 181, 5))
+    print("\nGain at az=0 for el=0 to 180 deg (average ground), for various heights:")
+    header = "Elevation (deg) |" + "".join([f" {h:>5} m" for h in heights_m])
+    print(header)
+    print("----------------|" + "-------" * len(heights_m))
+    # Compute the integer elevation of the peak gain per height for highlighting
+    highlight_el = {}
     for h_m in heights_m:
-        pattern = patterns_by_height[h_m]
-        if pattern:
-            max_gain = max(p['gain'] for p in pattern)
-            # Find the el in el_table whose gain is closest to max_gain
-            closest_el = min(el_table, key=lambda el: abs(min(pattern, key=lambda p: abs(p['el']-el))['gain'] - max_gain))
-            # Store the gain at that el for highlighting
-            closest_gain = min(pattern, key=lambda p: abs(p['el']-closest_el))['gain']
-            highlight_gain[h_m] = closest_gain
-        else:
-            highlight_gain[h_m] = None
+        # find the point with max gain
+        p_max = max(full_patterns[h_m], key=lambda p: p['gain'])
+        # round elevation to nearest multiple of 5° for table highlight
+        highlight_el[h_m] = int(round(p_max['el']/5.0) * 5)
     for el in el_table:
-        row = f"     {el:2d}         |"
+        row = f"   {el:3d}         |"
         for h_m in heights_m:
-            pattern = patterns_by_height[h_m]
-            if pattern:
-                closest = min(pattern, key=lambda p: abs(p['el']-el))
-                gain = closest['gain']
-                # Highlight the table value closest to the true max gain for this height
-                if abs(gain - highlight_gain[h_m]) < 1e-6:
-                    # ANSI bold yellow
-                    row += f" \033[1;33m{gain:7.3f}\033[0m"
-                else:
-                    row += f" {gain:7.3f}"
+            pattern = full_patterns[h_m]
+            closest = min(pattern, key=lambda p: abs(p['el'] - el))
+            gain_val = closest['gain']
+            # Highlight the cell at the peak elevation
+            if el == highlight_el[h_m]:
+                row += f" \033[1;33m{gain_val:7.3f}\033[0m"
             else:
-                row += f"    n/a "
+                row += f" {gain_val:7.3f}"
         print(row)
 
     # Print azimuth pattern at el=30 deg for each height (5 deg steps)
@@ -160,42 +154,7 @@ def main():
                 row += f"    n/a "
         print(row)
 
-    # --- POLAR PLOT: Power pattern vs Elevation for az=0, height=10m ---
-    # Use the 1-degree pattern for height=10m, az=0
-    pattern_10m = patterns_by_height[10]
-    # Filter out invalid gain values (e.g., -999)
-    pattern_10m = [p for p in pattern_10m if p['gain'] > -100]
-    # Sort by elevation
-    pattern_10m = sorted(pattern_10m, key=lambda p: p['el'])
-    el_angles = [p['el'] for p in pattern_10m]
-    gains = [p['gain'] for p in pattern_10m]
-    # Convert elevation to radians for polar plot (0 deg = horizon at right/E, 90 deg = zenith at top/N)
-    theta_rad = np.radians(el_angles)
-    # Debug: print first 10 elevation angles and their theta_rad values
-    print("Elevation (deg) -> theta (rad) for polar plot:")
-    for el, th in list(zip(el_angles, theta_rad))[:10]:
-        print(f"  el={el:.1f} deg -> theta={th:.3f} rad")
-    # Convert dBi to linear power ratios
-    r_linear = [10**(g/10.0) for g in gains]
-    plt.figure(figsize=(7,7))
-    ax = plt.subplot(111, polar=True)
-    ax.plot(theta_rad, r_linear, label='Power ratio (az=0, h=10m)')
-    ax.set_theta_zero_location('E')  # 0° elevation at right (horizon)
-    ax.set_theta_direction(1)        # Increasing elevation moves counterclockwise
-    ax.set_title('Elevation Pattern (az=0, h=10m)', va='bottom')
-    # Set log scale for radial axis
-    ax.set_rscale('log')
-    # Define radial ticks at dB intervals
-    min_db = -40
-    max_db = int(max(gains))
-    db_ticks = list(range(min_db, max_db+1, 10))
-    r_ticks = [10**(d/10.0) for d in db_ticks]
-    ax.set_rticks(r_ticks)
-    ax.set_yticklabels([f"{d} dB" for d in db_ticks])
-    ax.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    return
 
 if __name__ == "__main__":
     main() 
