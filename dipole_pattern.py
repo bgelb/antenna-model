@@ -10,6 +10,7 @@ import math
 import re
 from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length, get_ground_opts, feet_to_meters, meters_to_feet
 import matplotlib.pyplot as plt
+import numpy as np
 
 def main():
     # Frequency in MHz
@@ -159,38 +160,42 @@ def main():
                 row += f"    n/a "
         print(row)
 
-    # Plot full elevation pattern at 5, 10, 15m (az=0)
-    # heights_m = [5, 10, 15]
-    # el_angles = list(range(0, 91, 5))
-    # plt.figure(figsize=(8, 5))
-    # for h_m in heights_m:
-    #     # Sweep theta from 0 to 90 at phi=0
-    #     result = run_pymininec(
-    #         model,
-    #         freq_mhz=freq_mhz,
-    #         height_m=h_m,
-    #         ground_opts=ground_opts,
-    #         excitation_pulse="10,1",
-    #         pattern_opts={"theta": "0,90,1", "phi": "0,0,1"},
-    #         option="far-field",
-    #     )
-    #     pattern = [p for p in result['pattern'] if abs(p['az']-0)<1e-3]
-    #     gains = []
-    #     for el in el_angles:
-    #         if pattern:
-    #             closest = min(pattern, key=lambda p: abs(p['el']-el))
-    #             gain = closest['gain']
-    #             gains.append(gain)
-    #         else:
-    #             gains.append(float('nan'))
-    #     plt.plot(el_angles, gains, label=f"{h_m} m")
-    # plt.xlabel("Elevation angle (deg)")
-    # plt.ylabel("Gain (dBi) at az=0")
-    # plt.title("Dipole Elevation Pattern at Various Heights (average ground)")
-    # plt.legend(title="Height")
-    # plt.grid(True)
-    # plt.tight_layout()
-    # plt.show()
+    # --- POLAR PLOT: Power pattern vs Elevation for az=0, height=10m ---
+    # Use the 1-degree pattern for height=10m, az=0
+    pattern_10m = patterns_by_height[10]
+    # Filter out invalid gain values (e.g., -999)
+    pattern_10m = [p for p in pattern_10m if p['gain'] > -100]
+    # Sort by elevation
+    pattern_10m = sorted(pattern_10m, key=lambda p: p['el'])
+    el_angles = [p['el'] for p in pattern_10m]
+    gains = [p['gain'] for p in pattern_10m]
+    # Convert elevation to radians for polar plot (0 deg = horizon at right/E, 90 deg = zenith at top/N)
+    theta_rad = np.radians(el_angles)
+    # Debug: print first 10 elevation angles and their theta_rad values
+    print("Elevation (deg) -> theta (rad) for polar plot:")
+    for el, th in list(zip(el_angles, theta_rad))[:10]:
+        print(f"  el={el:.1f} deg -> theta={th:.3f} rad")
+    # Convert dBi to linear power ratios
+    r_linear = [10**(g/10.0) for g in gains]
+    plt.figure(figsize=(7,7))
+    ax = plt.subplot(111, polar=True)
+    ax.plot(theta_rad, r_linear, label='Power ratio (az=0, h=10m)')
+    ax.set_theta_zero_location('E')  # 0° elevation at right (horizon)
+    ax.set_theta_direction(1)        # Increasing elevation moves counterclockwise
+    ax.set_title('Elevation Pattern (az=0, h=10m)', va='bottom')
+    # Set log scale for radial axis
+    ax.set_rscale('log')
+    # Define radial ticks at dB intervals
+    min_db = -40
+    max_db = int(max(gains))
+    db_ticks = list(range(min_db, max_db+1, 10))
+    r_ticks = [10**(d/10.0) for d in db_ticks]
+    ax.set_rticks(r_ticks)
+    ax.set_yticklabels([f"{d} dB" for d in db_ticks])
+    ax.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     main() 
