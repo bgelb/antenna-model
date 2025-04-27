@@ -37,14 +37,14 @@ def build_dipole_model(
     radius: float = 0.001,
 ) -> AntennaModel:
     """
-    Build a center-fed dipole of given total length (meters), centered at origin (z=0).
+    Build a center-fed dipole of given total length (meters), centered at origin (z=0), oriented along the y-axis.
     Returns an AntennaModel instance.
     """
     half_length = total_length / 2.0
     wire = {
         'segments': segments,
-        'x1': f"{-half_length:.6f}", 'y1': "0", 'z1': "0",
-        'x2': f"{half_length:.6f}",  'y2': "0", 'z2': "0",
+        'x1': "0", 'y1': f"{-half_length:.6f}", 'z1': "0",
+        'x2': "0",  'y2': f"{half_length:.6f}",  'z2': "0",
         'radius': f"{radius:.6f}"
     }
     return AntennaModel([wire])
