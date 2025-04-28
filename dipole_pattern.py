@@ -4,6 +4,7 @@ Generate radiation pattern of a half-wave dipole antenna at 30ft elevation and 1
 Usage: python3 dipole_pattern.py [--show-gui]
 """
 import sys
+import math
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
@@ -97,15 +98,17 @@ def main():
     ax1.set_theta_direction(1)
     ax1.set_title('Elevation Pattern (az=0, all heights)', va='bottom')
     ax1.set_rscale('log')
-    # Clamp radial axis between -40 dB and the maximum gain
+    # Determine tick range: -40 dB to next multiple of 10 above the maximum gain
+    raw_max_gain = max(max(p['gain'] for p in full_patterns[h]) for h in heights_m)
+    tick_interval = 10
     min_db = -40
-    max_db = int(max(max(p['gain'] for p in full_patterns[h]) for h in heights_m))
-    # Prepare dB ticks and corresponding linear ticks
-    db_ticks = list(range(min_db, max_db + 1, 10))
+    # Round up max gain to nearest multiple of tick_interval
+    max_db_tick = int(tick_interval * math.ceil(raw_max_gain / tick_interval))
+    db_ticks = list(range(min_db, max_db_tick + tick_interval, tick_interval))
     r_ticks = [10**(d/10.0) for d in db_ticks]
     ax1.set_rticks(r_ticks)
     ax1.set_yticklabels([f"{d} dB" for d in db_ticks])
-    # Enforce radial axis limits so extremely low gains don't skew the plot
+    # Enforce radial axis limits to avoid skew from very low or high gains
     ax1.set_ylim(r_ticks[0], r_ticks[-1])
     ax1.grid(True)
     ax1.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
