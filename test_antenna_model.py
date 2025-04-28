@@ -1,5 +1,5 @@
 import pytest
-from antenna_model import build_dipole_model, run_pymininec, resonant_dipole_length, get_ground_opts, feet_to_meters, meters_to_feet
+from antenna_model import build_dipole_model, AntennaSimulator, resonant_dipole_length, get_ground_opts, feet_to_meters, meters_to_feet
 import re
 
 def test_resonant_dipole_length():
@@ -24,51 +24,37 @@ def test_build_dipole_model():
 def test_run_pymininec_runs():
     length = resonant_dipole_length(14.1)
     model = build_dipole_model(total_length=length, segments=11, radius=0.001)
-    out = run_pymininec(model, freq_mhz=14.1, height_m=9.144, excitation_pulse="5,1", pattern_opts={"theta": "10,10,2", "phi": "0,10,2"}, ground_opts=get_ground_opts("average"))
-    assert "MININEC" in out['raw_output']
-    assert "FREQUENCY" in out['raw_output']
-    assert "PATTERN DATA" in out['raw_output']
+    sim = AntennaSimulator()
+    out = sim.simulate_pattern(model, freq_mhz=14.1, height_m=9.144, ground="average", el_step=10, az_step=10)
+    # Can't check raw_output, but can check impedance and pattern
+    assert out['impedance'] is not None
+    assert isinstance(out['pattern'], list)
+    assert len(out['pattern']) > 0
 
 def test_dipole_pattern_regression():
     """
-    Check gain at multiple (el, az) points for a dipole at 10m above average ground.
-    Use 1 degree increments for both elevation and azimuth.
+    Check gain at multiple (el, az) points for a dipole in free space (height=0).
+    Use 1 degree increments for both elevation and azimuth. Expect ~2.15 dBi at az=0.
     """
     freq = 14.1
-    height = 10.0  # meters
+    height = 0.0  # meters (free space)
     length = resonant_dipole_length(freq)
     model = build_dipole_model(total_length=length, segments=21, radius=0.001)
-    # Now el means elevation above horizon, so we want el=20,30,40 at az=0
-    test_points = [
-        (20, 0),
-        (30, 0),
-        (40, 0),
-    ]
-    # Reference values to be filled after running (set to None for now)
-    reference = {
-        (20, 0): None,
-        (30, 0): None,
-        (40, 0): None,
-    }
-    for el, az in test_points:
-        # Convert elevation above horizon to zenith angle for pymininec
-        theta = 90 - el
-        result = run_pymininec(
-            model,
-            freq_mhz=freq,
-            height_m=height,
-            ground_opts=get_ground_opts("average"),
-            excitation_pulse="10,1",
-            pattern_opts={"theta": f"{theta},0,1", "phi": f"{az},0,1"},
-            option="far-field",
-        )
-        pattern = result['pattern']
-        match = next((p for p in pattern if abs(p['el']-el)<1e-3 and abs(p['az']-az)<1e-3), None)
-        print(f"Gain at el={el}, az={az}: {match['gain'] if match else 'not found'} dBi")
-        if (el, az) in reference and reference[(el, az)] is not None:
-            assert match, f"Pattern point for el={el}, az={az} not found"
-            gain = match['gain']
-            assert gain == pytest.approx(reference[(el, az)], abs=0.01), f"Gain at el={el}, az={az}: got {gain}, expected {reference[(el, az)]}"
+    sim = AntennaSimulator()
+    result = sim.simulate_pattern(
+        model, freq_mhz=freq, height_m=height, ground="free", el_step=1, az_step=1
+    )
+    pattern = result['pattern']
+    # Extract gains at az=0 for elevations 20, 30, 40
+    test_els = [20, 30, 40]
+    gains = {int(p['el']): p['gain'] for p in pattern if p['az'] == 0.0 and int(p['el']) in test_els}
+    assert len(gains) == len(test_els), f"Expected gains for elevations {test_els}, got {sorted(gains.keys())}"
+    # Ensure gain is constant across these elevations
+    g0 = gains[test_els[0]]
+    for el, g in gains.items():
+        assert g == pytest.approx(g0, abs=1e-6), f"Gain at el={el}, got {g}, expected constant {g0}"
+    # Check approximate theoretical value (~2.15 dBi)
+    assert g0 == pytest.approx(2.15, abs=0.05), f"Broadside gain {g0} dBi not within expected ~2.15"
 
 def test_dipole_impedance_5m():
     """
@@ -79,16 +65,9 @@ def test_dipole_impedance_5m():
     length = resonant_dipole_length(freq)
     model = build_dipole_model(total_length=length, segments=21, radius=0.001)
     ground_types = ["free", "poor", "average", "good"]
+    sim = AntennaSimulator()
     for ground in ground_types:
-        result = run_pymininec(
-            model,
-            freq_mhz=freq,
-            height_m=height,
-            ground_opts=get_ground_opts(ground),
-            excitation_pulse="10,1",
-            pattern_opts={"theta": "45,0,1", "phi": "0,0,1"},
-            option="far-field",
-        )
+        result = sim.simulate_pattern(model, freq_mhz=freq, height_m=height, ground=ground, el_step=45, az_step=360)
         R, X = result['impedance']
         print(f"Feedpoint impedance at 5m ({ground} ground): R={R:.5f} Ω, X={X:.5f} Ω")
 
@@ -103,16 +82,9 @@ def test_dipole_impedance_10m():
     ground_types = ["free", "average"]
     # Reference values for average ground
     expected = (68.74317, -49.64125)
+    sim = AntennaSimulator()
     for ground in ground_types:
-        result = run_pymininec(
-            model,
-            freq_mhz=freq,
-            height_m=height,
-            ground_opts=get_ground_opts(ground),
-            excitation_pulse="10,1",
-            pattern_opts={"theta": "45,0,1", "phi": "0,0,1"},
-            option="far-field",
-        )
+        result = sim.simulate_pattern(model, freq_mhz=freq, height_m=height, ground=ground, el_step=45, az_step=360)
         R, X = result['impedance']
         print(f"Feedpoint impedance at 10m ({ground} ground): R={R:.5f} Ω, X={X:.5f} Ω")
         if ground == "average":
