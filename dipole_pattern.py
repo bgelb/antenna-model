@@ -3,7 +3,6 @@
 Generate radiation pattern of a half-wave dipole antenna at 30ft elevation and 14.1 MHz.
 Usage: python3 dipole_pattern.py [--show-gui]
 """
-import sys
 import math
 import argparse
 import matplotlib.pyplot as plt
@@ -43,25 +42,7 @@ def main():
         R, X = result['impedance']
         print(f"   {h:6.1f} | {R:9.2f} | {X:8.2f}")
 
-    # 2) Gain vs elevation for 30 ft (free-space at 30ft)
-    height_ft = 30
-    height_m = feet_to_meters(height_ft)
-    result = sim.simulate_pattern(
-        model, freq_mhz=freq_mhz, height_m=height_m, ground=ground,
-        el_step=10.0, az_step=360.0
-    )
-    pattern = result['pattern']
-    if not pattern:
-        print("No pattern data found.")
-        sys.exit(1)
-    max_gain = max(p['gain'] for p in pattern)
-    print(f"\nRadiation pattern at {height_ft} ft (average ground):")
-    print("Elevation (deg) | Relative Gain (dB)")
-    print("-----------------------------------")
-    for p in pattern:
-        el = p['el']
-        rel = p['gain'] - max_gain
-        print(f"{el:8.1f} | {rel:7.2f}")
+    # 2) Removed: detailed 30 ft elevation table (not needed)
 
     # 3) Combined polar plots for elevation and azimuth patterns
     heights_m = [5, 10, 15, 20]
@@ -73,7 +54,30 @@ def main():
             el_step=1.0, az_step=360.0
         )
         full_patterns[h] = res['pattern']
-    # Azimuth patterns at fixed elevation 30°
+    # Gain table at az=0 for el=0 to 180 deg (average ground), for various heights
+    el_table = list(range(0, 181, 5))
+    print("\nGain at az=0 for el=0 to 180 deg (average ground), for various heights:")
+    header = "Elevation (deg) |" + "".join([f" {h:>7} m" for h in heights_m])
+    print(header)
+    print("----------------|" + "-------" * len(heights_m))
+    # Determine which elevation to highlight for each height
+    highlight_el = {}
+    for h in heights_m:
+        # find elevation of peak gain and round to nearest 5°
+        p_max = max(full_patterns[h], key=lambda p: p['gain'])
+        highlight_el[h] = int(round(p_max['el'] / 5.0) * 5)
+    for el in el_table:
+        row = f"{el:8d}         |"
+        for h in heights_m:
+            pattern_list = full_patterns[h]
+            closest = min(pattern_list, key=lambda p: abs(p['el'] - el))
+            gain_val = closest['gain']
+            if el == highlight_el[h]:
+                row += f" \033[1;33m{gain_val:7.3f}\033[0m"
+            else:
+                row += f" {gain_val:7.3f}"
+        print(row)
+    # 4) Azimuth patterns at fixed elevation 30°
     el_fixed = 30.0
     az_patterns = {}
     for h in heights_m:
