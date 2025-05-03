@@ -1,0 +1,10 @@
+# requirements.txt for fd-yagi-cursor
+# To install all dependencies in your virtualenv, run:
+#   pip install -r requirements.txt
+#
+# This file lists all required packages for running, plotting, and testing the antenna modeling scripts.
+#
+# Created with pip freeze after installing matplotlib, pymininec, and pytest.
+matplotlib
+pymininec
+pytest
