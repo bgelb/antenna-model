@@ -22,7 +22,8 @@ def main():
 
     # Simulation setup
     freq_mhz = 14.1
-    total_length = resonant_dipole_length(freq_mhz)
+    # Compute lengths using resonant_dipole_length
+    driven_length = resonant_dipole_length(freq_mhz)
     segments = 21
     radius = 0.001
     ground = 'average'
@@ -31,7 +32,7 @@ def main():
     model = AntennaModel()
 
     # Driven element (half-wave dipole) at origin
-    half_len = total_length / 2.0
+    half_len = driven_length / 2.0
     driven = AntennaElement(
         x1=0.0, y1=-half_len, z1=0.0,
         x2=0.0, y2= half_len, z2=0.0,
@@ -46,11 +47,12 @@ def main():
     c = 299792458.0
     lambda_m = c / (freq_mhz * 1e6)
     spacing = 0.2 * lambda_m
-    pass_length = total_length * 1.05
-    half_pass = pass_length / 2.0
+    # Compute passive element length using resonant_dipole_length at 5% reduced frequency to get 5% longer length
+    passive_length = resonant_dipole_length(freq_mhz / 1.05)
+    half_pass = passive_length / 2.0
     passive = AntennaElement(
-        x1=spacing, y1=-half_pass, z1=0.0,
-        x2=spacing, y2= half_pass, z2=0.0,
+        x1=-spacing, y1=-half_pass, z1=0.0,
+        x2=-spacing, y2= half_pass, z2=0.0,
         segments=segments, radius=radius,
     )
     model.add_element(passive)
