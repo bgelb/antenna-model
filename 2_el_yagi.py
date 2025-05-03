@@ -107,12 +107,17 @@ def main():
     max_fwd = max(results, key=lambda x: x[1])[1]
     max_fbr = max(results, key=lambda x: x[2])[2]
     for detune, fwd_gain, fbr in results:
-        highlight = ""
-        if abs(fwd_gain - max_fwd) < 1e-6:
-            highlight += " <== max FWD"
-        if abs(fbr - max_fbr) < 1e-6:
-            highlight += " <== max F/B"
-        print(f"{detune*100:8.2f} | {fwd_gain:14.2f} | {fbr:8.2f}{highlight}")
+        color_start = ""
+        color_end = ""
+        if abs(fwd_gain - max_fwd) < 1e-6 and abs(fbr - max_fbr) < 1e-6:
+            color_start = "\033[1;35m"  # magenta for both
+        elif abs(fwd_gain - max_fwd) < 1e-6:
+            color_start = "\033[1;33m"  # yellow for max FWD
+        elif abs(fbr - max_fbr) < 1e-6:
+            color_start = "\033[1;36m"  # cyan for max F/B
+        if color_start:
+            color_end = "\033[0m"
+        print(f"{color_start}{detune*100:8.2f} | {fwd_gain:14.2f} | {fbr:8.2f}{color_end}")
 
     # 4) Plot patterns
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, 'output/2_el_yagi_pattern.png', args.show_gui)
