@@ -11,8 +11,12 @@ from antenna_model import (
     build_dipole_model,
     AntennaSimulator,
     resonant_dipole_length,
-    get_ground_opts,
-    feet_to_meters,
+    compute_impedance_vs_heights,
+    print_impedance_table,
+    compute_elevation_patterns,
+    compute_azimuth_patterns,
+    print_gain_table,
+    plot_polar_patterns,
 )
 
 def main():
@@ -30,119 +34,23 @@ def main():
     ground = 'average'
 
     # 1) Feedpoint impedance vs height
-    heights_m_imp = [5, 10, 15, 20]
+    heights = [5, 10, 15, 20]
     print("Feedpoint impedance vs height (average ground):")
-    print("Height (m) |    R (ohm) |   X (ohm)")
-    print("-----------------------------------")
-    for h in heights_m_imp:
-        result = sim.simulate_pattern(
-            model, freq_mhz=freq_mhz, height_m=h, ground=ground,
-            el_step=45.0, az_step=360.0
-        )
-        R, X = result['impedance']
-        print(f"   {h:6.1f} | {R:9.2f} | {X:8.2f}")
+    imp_list = compute_impedance_vs_heights(sim, model, freq_mhz, heights, ground)
+    print_impedance_table(imp_list)
 
-    # 2) Removed: detailed 30 ft elevation table (not needed)
-
-    # 3) Combined polar plots for elevation and azimuth patterns
-    heights_m = [5, 10, 15, 20]
-    # Elevation patterns (az=0)
-    full_patterns = {}
-    for h in heights_m:
-        res = sim.simulate_pattern(
-            model, freq_mhz=freq_mhz, height_m=h, ground=ground,
-            el_step=1.0, az_step=360.0
-        )
-        full_patterns[h] = res['pattern']
-    # Gain table at az=0 for el=0 to 180 deg (average ground), for various heights
-    el_table = list(range(0, 181, 5))
+    # 2) Gain tables and pattern computation
+    el_pats = compute_elevation_patterns(sim, model, freq_mhz, heights, ground)
+    el_angles = list(range(0, 181, 5))
     print("\nGain at az=0 for el=0 to 180 deg (average ground), for various heights:")
-    header = "Elevation (deg) |" + "".join([f" {h:>7} m" for h in heights_m])
-    print(header)
-    print("----------------|" + "-------" * len(heights_m))
-    # Determine which elevation to highlight for each height
-    highlight_el = {}
-    for h in heights_m:
-        # find elevation of peak gain and round to nearest 5°
-        p_max = max(full_patterns[h], key=lambda p: p['gain'])
-        highlight_el[h] = int(round(p_max['el'] / 5.0) * 5)
-    for el in el_table:
-        row = f"{el:8d}         |"
-        for h in heights_m:
-            pattern_list = full_patterns[h]
-            closest = min(pattern_list, key=lambda p: abs(p['el'] - el))
-            gain_val = closest['gain']
-            if el == highlight_el[h]:
-                row += f" \033[1;33m{gain_val:7.3f}\033[0m"
-            else:
-                row += f" {gain_val:7.3f}"
-        print(row)
-    # 4) Azimuth patterns at fixed elevation 30°
+    print_gain_table(el_pats, heights, el_angles)
+
+    # 3) Azimuth patterns at fixed elevation 30°
     el_fixed = 30.0
-    az_patterns = {}
-    for h in heights_m:
-        az_patterns[h] = sim.simulate_azimuth_pattern(
-            model, freq_mhz=freq_mhz, height_m=h, ground=ground,
-            el=el_fixed, az_step=5.0
-        )
+    az_pats = compute_azimuth_patterns(sim, model, freq_mhz, heights, ground, el=el_fixed)
 
-    # Plotting
-    fig, (ax1, ax2) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
-    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
-
-    # Elevation pattern plot
-    for idx, h in enumerate(heights_m):
-        data = sorted(full_patterns[h], key=lambda p: p['el'])
-        els = [p['el'] for p in data]
-        gains = [p['gain'] for p in data]
-        theta = np.radians(els)
-        r = [10**(g/10.0) for g in gains]
-        ax1.plot(theta, r, label=f'h={h}m', color=colors[idx % len(colors)])
-    ax1.set_theta_zero_location('E')
-    ax1.set_theta_direction(1)
-    ax1.set_title('Elevation Pattern (az=0, all heights)', va='bottom')
-    ax1.set_rscale('log')
-    # Determine tick range: -40 dB to next multiple of 10 above the maximum gain
-    raw_max_gain = max(max(p['gain'] for p in full_patterns[h]) for h in heights_m)
-    tick_interval = 10
-    min_db = -40
-    # Round up max gain to nearest multiple of tick_interval
-    max_db_tick = int(tick_interval * math.ceil(raw_max_gain / tick_interval))
-    db_ticks = list(range(min_db, max_db_tick + tick_interval, tick_interval))
-    r_ticks = [10**(d/10.0) for d in db_ticks]
-    ax1.set_rticks(r_ticks)
-    ax1.set_yticklabels([f"{d} dB" for d in db_ticks])
-    # Enforce radial axis limits to avoid skew from very low or high gains
-    ax1.set_ylim(r_ticks[0], r_ticks[-1])
-    ax1.grid(True)
-    ax1.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
-
-    # Azimuth pattern plot
-    for idx, h in enumerate(heights_m):
-        data = sorted(az_patterns[h], key=lambda p: p['az'])
-        azs = [p['az'] for p in data]
-        gains = [p['gain'] for p in data]
-        phi = np.radians(azs)
-        r = [10**(g/10.0) for g in gains]
-        ax2.plot(phi, r, label=f'h={h}m', color=colors[idx % len(colors)])
-    ax2.set_theta_zero_location('E')
-    ax2.set_theta_direction(-1)
-    ax2.set_title(f'Azimuth Pattern (el={int(el_fixed)}°, all heights)', va='bottom')
-    ax2.set_rscale('log')
-    max_db_az = int(max(max(p['gain'] for p in az_patterns[h]) for h in heights_m))
-    db_ticks_az = list(range(min_db, max_db_az + 1, 10))
-    r_ticks_az = [10**(d/10.0) for d in db_ticks_az]
-    ax2.set_rticks(r_ticks_az)
-    ax2.set_yticklabels([f"{d} dB" for d in db_ticks_az])
-    ax2.grid(True)
-    ax2.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
-
-    plt.tight_layout()
-    if args.show_gui:
-        plt.show()
-    else:
-        plt.savefig('output/pattern_comparison_all_heights.png')
-        print('Saved combined pattern comparison plot to output/pattern_comparison_all_heights.png')
+    # 4) Plot patterns
+    plot_polar_patterns(el_pats, az_pats, heights, el_fixed, 'output/pattern_comparison_all_heights.png', args.show_gui)
 
 if __name__ == '__main__':
     main() 
