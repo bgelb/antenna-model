@@ -82,13 +82,11 @@ def main():
 
     # 5) Reflector detuning optimization: vary detune ratio from 0% to 10%
     print("\nDetune (%) | Fwd Gain (dBi) | F/B (dB)")
+    results = []
     for detune in np.linspace(0, 0.10, 11):
-        # Rebuild model with detuned reflector length
         model_opt = AntennaModel()
-        # driven element and feedpoint as before
         model_opt.add_element(driven)
         model_opt.add_feedpoint(element_index=0, segment=center_seg)
-        # passive reflector detuned length
         detuned_length = driven_length * (1 + detune)
         half_detuned = detuned_length / 2.0
         reflector = AntennaElement(
@@ -97,14 +95,24 @@ def main():
             segments=segments, radius=radius,
         )
         model_opt.add_element(reflector)
-        # Simulate azimuth at 30° elevation, 10m height
         az_res = sim.simulate_azimuth_pattern(
             model_opt, freq_mhz=freq_mhz, height_m=10.0,
             ground=ground, el=30.0, az_step=5.0
         )
         fwd_gain = next(p['gain'] for p in az_res if abs(p['az']) < 1e-6)
         back_gain = next(p['gain'] for p in az_res if abs(p['az'] - 180.0) < 1e-6)
-        print(f"{detune*100:8.2f} | {fwd_gain:14.2f} | {fwd_gain - back_gain:8.2f}")
+        fbr = fwd_gain - back_gain
+        results.append((detune, fwd_gain, fbr))
+    # Find peaks
+    max_fwd = max(results, key=lambda x: x[1])[1]
+    max_fbr = max(results, key=lambda x: x[2])[2]
+    for detune, fwd_gain, fbr in results:
+        highlight = ""
+        if abs(fwd_gain - max_fwd) < 1e-6:
+            highlight += " <== max FWD"
+        if abs(fbr - max_fbr) < 1e-6:
+            highlight += " <== max F/B"
+        print(f"{detune*100:8.2f} | {fwd_gain:14.2f} | {fbr:8.2f}{highlight}")
 
     # 4) Plot patterns
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, 'output/2_el_yagi_pattern.png', args.show_gui)
