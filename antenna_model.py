@@ -507,6 +507,7 @@ def plot_polar_patterns(
     ax_az.set_rscale('log')
     ax_az.set_rticks(r_ticks_az)
     ax_az.set_yticklabels([f"{d} dB" for d in db_ticks_az])
+    ax_az.set_ylim(r_ticks_az[0], r_ticks_az[-1])
     ax_az.grid(True)
     for idx, h in enumerate(heights):
         data = sorted(azimuth_patterns[h], key=lambda p: p['az'])
