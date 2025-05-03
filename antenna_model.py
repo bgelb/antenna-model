@@ -497,8 +497,9 @@ def plot_polar_patterns(
     ax_el.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
     # Azimuth pattern
     raw_max_az = max(max(p['gain'] for p in azimuth_patterns[h]) for h in heights)
-    db_max_az = math.ceil(raw_max_az / 10.0) * 10
-    db_ticks_az = list(range(db_min, db_max_az + 10, 10))
+    # Use floor of max gain for tick calculation (no extra padding)
+    db_max_az = int(raw_max_az)
+    db_ticks_az = list(range(db_min, db_max_az + 1, 10))
     r_ticks_az = [10**(d/10.0) for d in db_ticks_az]
     ax_az.set_theta_zero_location('E')
     ax_az.set_theta_direction(-1)
