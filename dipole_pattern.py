@@ -141,8 +141,8 @@ def main():
     if args.show_gui:
         plt.show()
     else:
-        plt.savefig('pattern_comparison_all_heights.png')
-        print('Saved combined pattern comparison plot to pattern_comparison_all_heights.png')
+        plt.savefig('output/pattern_comparison_all_heights.png')
+        print('Saved combined pattern comparison plot to output/pattern_comparison_all_heights.png')
 
 if __name__ == '__main__':
     main() 
