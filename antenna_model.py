@@ -11,13 +11,60 @@ def meters_to_feet(meters: float) -> float:
     """Convert meters to feet."""
     return meters / 0.3048
 
+# Define a generic antenna element (straight wire)
+class AntennaElement:
+    """
+    Represents a straight wire segment in 3D space with specified geometry, segmentation, and radius.
+    """
+    def __init__(self,
+                 x1: float, y1: float, z1: float,
+                 x2: float, y2: float, z2: float,
+                 segments: int,
+                 radius: float):
+        self.x1 = x1
+        self.y1 = y1
+        self.z1 = z1
+        self.x2 = x2
+        self.y2 = y2
+        self.z2 = z2
+        self.segments = segments
+        self.radius = radius
+
+    def to_wire_dict(self) -> Dict[str, Any]:
+        """Convert this element into a pymininec wire definition dict."""
+        return {
+            'segments': self.segments,
+            'x1': f"{self.x1:.6f}",
+            'y1': f"{self.y1:.6f}",
+            'z1': f"{self.z1:.6f}",
+            'x2': f"{self.x2:.6f}",
+            'y2': f"{self.y2:.6f}",
+            'z2': f"{self.z2:.6f}",
+            'radius': f"{self.radius:.6f}",
+        }
+
 class AntennaModel:
     """
-    Represents an antenna model as a set of wires in relative position.
+    Represents an antenna model composed of one or more elements and feedpoints.
     """
-    def __init__(self, wires: List[Dict[str, Any]]):
-        self.wires = wires  # List of wire dicts
-        # Each wire: dict with keys: segments, x1, y1, z1, x2, y2, z2, radius
+    def __init__(self):
+        # List of AntennaElement instances
+        self.elements: List[AntennaElement] = []
+        # List of feedpoint definitions as dicts {'element_index': int, 'segment': int}
+        self.feedpoints: List[Dict[str, int]] = []
+
+    def add_element(self, element: AntennaElement) -> None:
+        """Add an antenna element (straight wire) to the model."""
+        self.elements.append(element)
+
+    def add_feedpoint(self, element_index: int, segment: int) -> None:
+        """Add a feedpoint on the specified element and segment index."""
+        self.feedpoints.append({'element_index': element_index, 'segment': segment})
+
+    @property
+    def wires(self) -> List[Dict[str, Any]]:
+        """Flatten elements into wire definitions suitable for pymininec."""
+        return [e.to_wire_dict() for e in self.elements]
 
     def to_pymininec_args(self, height_m: float = 0.0) -> List[str]:
         args = []
@@ -40,14 +87,20 @@ def build_dipole_model(
     Build a center-fed dipole of given total length (meters), centered at origin (z=0), oriented along the y-axis.
     Returns an AntennaModel instance.
     """
+    # Create a single straight element for the half-wave dipole
     half_length = total_length / 2.0
-    wire = {
-        'segments': segments,
-        'x1': "0", 'y1': f"{-half_length:.6f}", 'z1': "0",
-        'x2': "0",  'y2': f"{half_length:.6f}",  'z2': "0",
-        'radius': f"{radius:.6f}"
-    }
-    return AntennaModel([wire])
+    element = AntennaElement(
+        x1=0.0, y1=-half_length, z1=0.0,
+        x2=0.0, y2=half_length, z2=0.0,
+        segments=segments,
+        radius=radius,
+    )
+    model = AntennaModel()
+    model.add_element(element)
+    # Default feedpoint at center segment of the sole element
+    center_seg = (segments + 1) // 2
+    model.add_feedpoint(element_index=0, segment=center_seg)
+    return model
 
 def resonant_dipole_length(freq_mhz: float) -> float:
     """
