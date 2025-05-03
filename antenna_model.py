@@ -224,6 +224,41 @@ class AntennaSimulator:
             'pattern': pattern
         }
 
+    def simulate_azimuth_pattern(
+        self,
+        model: AntennaModel,
+        freq_mhz: float,
+        height_m: float,
+        ground: str,
+        el: float,
+        az_step: float = 5.0,
+    ) -> List[Dict[str, float]]:
+        """
+        Simulate azimuth cut at a fixed elevation (deg) by sweeping phi.
+        Returns list of dicts with 'el', 'az', 'gain'.
+        """
+        ground_opts = get_ground_opts(ground)
+        # Convert elevation to zenith angle
+        zenith = 90.0 - el
+        # Round phi step
+        phi_step = self._round_step(az_step, 360.0)
+        phi_count = int(360.0 / phi_step) + 1
+        pattern_opts = {
+            'theta': f'{zenith:.6f},0,1',
+            'phi': f'0,{phi_step},{phi_count}'
+        }
+        result = _run_pymininec(
+            model,
+            freq_mhz=freq_mhz,
+            height_m=height_m,
+            ground_opts=ground_opts,
+            excitation_pulse='10,1',
+            pattern_opts=pattern_opts,
+            option='far-field'
+        )
+        # Return only entries at the requested elevation
+        return [p for p in result['pattern'] if abs(p['el'] - el) < 1e-3]
+
 # Standard ground types for pymininec
 # Values from NEC/ARRL conventions:
 #   'poor':    εr=5,   σ=0.001 S/m
