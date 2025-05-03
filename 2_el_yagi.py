@@ -79,8 +79,6 @@ def main():
     # 3) Compute azimuth patterns at fixed elevation and plot
     el_fixed = 30.0
     az_pats = compute_azimuth_patterns(sim, model, freq_mhz, heights, ground, el=el_fixed)
-    # 4) Plot patterns
-    plot_polar_patterns(el_pats, az_pats, heights, el_fixed, 'output/2_el_yagi_pattern.png', args.show_gui)
 
     # 5) Reflector detuning optimization: vary detune ratio from 0% to 10%
     print("\nDetune (%) | Fwd Gain (dBi) | F/B (dB)")
@@ -107,6 +105,9 @@ def main():
         fwd_gain = next(p['gain'] for p in az_res if abs(p['az']) < 1e-6)
         back_gain = next(p['gain'] for p in az_res if abs(p['az'] - 180.0) < 1e-6)
         print(f"{detune*100:8.2f} | {fwd_gain:14.2f} | {fwd_gain - back_gain:8.2f}")
+
+    # 4) Plot patterns
+    plot_polar_patterns(el_pats, az_pats, heights, el_fixed, 'output/2_el_yagi_pattern.png', args.show_gui)
 
 if __name__ == '__main__':
     main() 
