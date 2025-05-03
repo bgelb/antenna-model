@@ -2,6 +2,8 @@ import subprocess
 from typing import List, Dict, Any, Optional, Tuple
 import math
 import re
+import matplotlib.pyplot as plt
+import numpy as np
 
 def feet_to_meters(feet: float) -> float:
     """Convert feet to meters."""
@@ -334,4 +336,186 @@ def get_ground_opts(ground_type: str = "average") -> Optional[list]:
     elif ground_type == "good":
         return ["--medium=20,0.03,0"]
     else:
-        raise ValueError(f"Unknown ground type: {ground_type}") 
+        raise ValueError(f"Unknown ground type: {ground_type}")
+
+# === High-level utilities for antenna analysis and plotting ===
+
+def compute_impedance_vs_heights(
+    sim: AntennaSimulator,
+    model: AntennaModel,
+    freq_mhz: float,
+    heights: List[float],
+    ground: str,
+    el_step: float = 45.0,
+    az_step: float = 360.0,
+) -> List[Tuple[float, float, float]]:
+    """
+    Compute feedpoint impedance (R, X) for each height in meters.
+    Returns a list of tuples (height, R, X).
+    """
+    results: List[Tuple[float, float, float]] = []
+    for h in heights:
+        res = AntennaSimulator().simulate_pattern(
+            model,
+            freq_mhz=freq_mhz,
+            height_m=h,
+            ground=ground,
+            el_step=el_step,
+            az_step=az_step,
+        )
+        R, X = res['impedance']
+        results.append((h, R, X))
+    return results
+
+
+def print_impedance_table(imp_list: List[Tuple[float, float, float]]) -> None:
+    """
+    Print a table of feedpoint impedance vs. height.
+    """
+    print("Height (m) |    R (Ω)   |   X (Ω)")
+    print("-----------------------------------")
+    for h, R, X in imp_list:
+        print(f"   {h:6.1f} | {R:9.2f} | {X:8.2f}")
+
+
+def compute_elevation_patterns(
+    sim: AntennaSimulator,
+    model: AntennaModel,
+    freq_mhz: float,
+    heights: List[float],
+    ground: str,
+    el_step: float = 1.0,
+    az_step: float = 360.0,
+) -> Dict[float, List[Dict[str, float]]]:
+    """
+    Compute elevation patterns (pattern at az=0) for each height.
+    Returns a dict mapping height to list of {{'el', 'az', 'gain'}}.
+    """
+    patterns: Dict[float, List[Dict[str, float]]] = {}
+    for h in heights:
+        res = AntennaSimulator().simulate_pattern(
+            model,
+            freq_mhz=freq_mhz,
+            height_m=h,
+            ground=ground,
+            el_step=el_step,
+            az_step=az_step,
+        )
+        patterns[h] = res['pattern']
+    return patterns
+
+
+def compute_azimuth_patterns(
+    sim: AntennaSimulator,
+    model: AntennaModel,
+    freq_mhz: float,
+    heights: List[float],
+    ground: str,
+    el: float,
+    az_step: float = 5.0,
+) -> Dict[float, List[Dict[str, float]]]:
+    """
+    Compute azimuth patterns at fixed elevation for each height.
+    Returns a dict mapping height to list of {{'el', 'az', 'gain'}}.
+    """
+    patterns: Dict[float, List[Dict[str, float]]] = {}
+    for h in heights:
+        patterns[h] = AntennaSimulator().simulate_azimuth_pattern(
+            model,
+            freq_mhz=freq_mhz,
+            height_m=h,
+            ground=ground,
+            el=el,
+            az_step=az_step,
+        )
+    return patterns
+
+
+def print_gain_table(
+    patterns: Dict[float, List[Dict[str, float]]],
+    heights: List[float],
+    el_angles: List[int],
+    highlight: bool = True,
+) -> None:
+    """
+    Print a gain table for specified heights and elevation angles.
+    Highlight the maximum gain elevation for each height if highlight=True.
+    """
+    header = "Elevation (deg) |" + "".join([f" {h:>7} m" for h in heights])
+    print(header)
+    print("----------------|" + "-------" * len(heights))
+    max_el: Dict[float, float] = {}
+    if highlight:
+        for h in heights:
+            best = max(patterns[h], key=lambda p: p['gain'])
+            max_el[h] = best['el']
+    for el in el_angles:
+        row = f"{el:8d}         |"
+        for h in heights:
+            closest = min(patterns[h], key=lambda p: abs(p['el'] - el))
+            g = closest['gain']
+            if highlight and abs(max_el.get(h, -1) - el) < 1e-6:
+                row += f" \033[1;33m{g:7.3f}\033[0m"
+            else:
+                row += f" {g:7.3f}"
+        print(row)
+
+
+def plot_polar_patterns(
+    elevation_patterns: Dict[float, List[Dict[str, float]]],
+    azimuth_patterns: Dict[float, List[Dict[str, float]]],
+    heights: List[float],
+    el_fixed: float,
+    output_file: str,
+    show_gui: bool = False,
+) -> None:
+    """
+    Generate elevation (az=0) and azimuth (el=el_fixed) polar plots for each height.
+    Saves to output_file or displays if show_gui=True.
+    """
+    fig, (ax_el, ax_az) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    # Elevation pattern
+    raw_max = max(max(p['gain'] for p in elevation_patterns[h]) for h in heights)
+    db_min = -40
+    db_max = math.ceil(raw_max / 10.0) * 10
+    db_ticks = list(range(db_min, db_max + 10, 10))
+    r_ticks = [10**(d/10.0) for d in db_ticks]
+    ax_el.set_theta_zero_location('E')
+    ax_el.set_theta_direction(1)
+    ax_el.set_title('Elevation Pattern (az=0)', va='bottom')
+    ax_el.set_rscale('log')
+    ax_el.set_rticks(r_ticks)
+    ax_el.set_yticklabels([f"{d} dB" for d in db_ticks])
+    ax_el.set_ylim(r_ticks[0], r_ticks[-1])
+    ax_el.grid(True)
+    for idx, h in enumerate(heights):
+        data = sorted(elevation_patterns[h], key=lambda p: p['el'])
+        theta = np.radians([p['el'] for p in data])
+        r = [10**(p['gain']/10.0) for p in data]
+        ax_el.plot(theta, r, label=f"h={h}m", color=colors[idx % len(colors)])
+    ax_el.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
+    # Azimuth pattern
+    raw_max_az = max(max(p['gain'] for p in azimuth_patterns[h]) for h in heights)
+    db_max_az = math.ceil(raw_max_az / 10.0) * 10
+    db_ticks_az = list(range(db_min, db_max_az + 10, 10))
+    r_ticks_az = [10**(d/10.0) for d in db_ticks_az]
+    ax_az.set_theta_zero_location('E')
+    ax_az.set_theta_direction(-1)
+    ax_az.set_title(f'Azimuth Pattern (el={int(el_fixed)}°)', va='bottom')
+    ax_az.set_rscale('log')
+    ax_az.set_rticks(r_ticks_az)
+    ax_az.set_yticklabels([f"{d} dB" for d in db_ticks_az])
+    ax_az.grid(True)
+    for idx, h in enumerate(heights):
+        data = sorted(azimuth_patterns[h], key=lambda p: p['az'])
+        phi = np.radians([p['az'] for p in data])
+        r = [10**(p['gain']/10.0) for p in data]
+        ax_az.plot(phi, r, label=f"h={h}m", color=colors[idx % len(colors)])
+    ax_az.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
+    plt.tight_layout()
+    if show_gui:
+        plt.show()
+    else:
+        plt.savefig(output_file)
+        print(f"Saved polar patterns to {output_file}") 
