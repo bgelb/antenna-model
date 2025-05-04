@@ -520,4 +520,58 @@ def plot_polar_patterns(
         plt.show()
     else:
         plt.savefig(output_file)
-        print(f"Saved polar patterns to {output_file}") 
+        print(f"Saved polar patterns to {output_file}")
+
+# === Report generation ===
+class Report:
+    """
+    Generate a Markdown report in output subdirectory, with tables and inline plots.
+    Usage:
+        report = Report(name, base_dir='output')
+        report.add_table(title, headers, rows)
+        report.add_plot(title, image_path)
+        report.save()
+    """
+    def __init__(self, name: str, base_dir: str = 'output'):
+        import os
+        self.name = name
+        self.base_dir = base_dir
+        self.report_dir = os.path.join(self.base_dir, self.name)
+        os.makedirs(self.report_dir, exist_ok=True)
+        self.lines = [f"# Report for {self.name}", ""]
+
+    def add_table(self, title: str, headers: list, rows: list):
+        # Add a markdown table section
+        self.lines.append(f"## {title}")
+        self.lines.append("")
+        # Header row
+        header_row = "| " + " | ".join(headers) + " |"
+        self.lines.append(header_row)
+        # Separator
+        separator = "| " + " | ".join(['---'] * len(headers)) + " |"
+        self.lines.append(separator)
+        # Data rows
+        for row in rows:
+            # Convert all items to string
+            items = [str(item) for item in row]
+            self.lines.append("| " + " | ".join(items) + " |")
+        self.lines.append("")
+
+    def add_plot(self, title: str, image_path: str):
+        # Copy image into report directory and add markdown image link
+        import os, shutil
+        self.lines.append(f"## {title}")
+        self.lines.append("")
+        dest = os.path.join(self.report_dir, os.path.basename(image_path))
+        shutil.copy(image_path, dest)
+        # Embed image
+        self.lines.append(f"![{title}]({os.path.basename(image_path)})")
+        self.lines.append("")
+
+    def save(self):
+        # Write markdown file
+        import os
+        md_path = os.path.join(self.report_dir, f"{self.name}.md")
+        with open(md_path, 'w') as f:
+            f.write("\n".join(self.lines))
+        print(f"Saved report to {md_path}") 
