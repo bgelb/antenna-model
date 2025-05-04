@@ -18,6 +18,7 @@ from antenna_model import (
     compute_elevation_patterns,
     compute_azimuth_patterns,
     plot_polar_patterns,
+    configure_polar_axes,
     Report,
 )
 
@@ -117,37 +118,21 @@ def main():
     fig, (ax_el_cmp, ax_az_cmp) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
     # Elevation comparison
     raw_max_el = max(max(p['gain'] for p in jk_el_cmp), max(p['gain'] for p in dip_el_cmp))
-    # dB ticks: 0, -3, -6, -10, -20, -30, -40 dB
-    rel_db = [0, 3, 6, 10, 20, 30, 40]
-    r_ticks = [10 ** (-d / 20.0) for d in rel_db]
-    labels = ['0 dB'] + [f'-{d} dB' for d in rel_db[1:]]
-    ax_el_cmp.set_theta_zero_location('E')
-    ax_el_cmp.set_theta_direction(1)
-    ax_el_cmp.set_rgrids(r_ticks, labels=labels)
-    ax_el_cmp.set_ylim(0, 1)
+    configure_polar_axes(ax_el_cmp, 'Elevation Comparison (az=0)', raw_max_el)
     for label, pat in [('8JK', jk_el_cmp), ('Dipole', dip_el_cmp)]:
         data = sorted(pat, key=lambda p: p['el'])
         theta = np.radians([p['el'] for p in data])
-        # amplitude ratio relative to max gain (dB to linear)
         r = [10 ** ((p['gain'] - raw_max_el) / 20.0) for p in data]
         ax_el_cmp.plot(theta, r, label=label)
-    ax_el_cmp.set_title('Elevation Comparison (az=0)')
     ax_el_cmp.legend()
     # Azimuth comparison
     raw_max_az = max(max(p['gain'] for p in jk_az_cmp), max(p['gain'] for p in dip_az_cmp))
-    # use same dB ticks
-    r_ticks_az = [10 ** (-d / 20.0) for d in rel_db]
-    labels_az = ['0 dB'] + [f'-{d} dB' for d in rel_db[1:]]
-    ax_az_cmp.set_theta_zero_location('E')
-    ax_az_cmp.set_theta_direction(-1)
-    ax_az_cmp.set_rgrids(r_ticks_az, labels=labels_az)
-    ax_az_cmp.set_ylim(0, 1)
+    configure_polar_axes(ax_az_cmp, f'Azimuth Comparison (el={int(el_fixed)}°)', raw_max_az, direction=-1)
     for label, pat in [('8JK', jk_az_cmp), ('Dipole', dip_az_cmp)]:
         data = sorted(pat, key=lambda p: p['az'])
         phi = np.radians([p['az'] for p in data])
         r = [10 ** ((p['gain'] - raw_max_az) / 20.0) for p in data]
         ax_az_cmp.plot(phi, r, label=label)
-    ax_az_cmp.set_title(f'Azimuth Comparison (el={int(el_fixed)}°)')
     ax_az_cmp.legend()
     plt.tight_layout()
     output_cmp = os.path.join(report.report_dir, '8_jk_vs_dipole.png')
