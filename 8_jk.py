@@ -14,6 +14,7 @@ from antenna_model import (
     AntennaSimulator,
     feet_to_meters,
     build_dipole_model,
+    build_two_element_yagi_model,
     compute_impedance_vs_heights,
     compute_elevation_patterns,
     compute_azimuth_patterns,
@@ -160,32 +161,42 @@ def main():
     plot_polar_patterns(el_pats_hw, az_pats_hw, heights, el_fixed, output_hw, args.show_gui)
     report.add_plot('Azimuth and Elevation Patterns (8JK - 0.5 wl)', output_hw)
 
-    # 5) Comparison with a simple dipole at h=10m
+    # 5) Comparison with dipole and Yagi at h=10m
     cmp_height = 10.0
     cmp_heights = [cmp_height]
+    # Patterns for 44' 8JK
     jk_el_cmp = compute_elevation_patterns(sim, model, freq_mhz, cmp_heights, ground)[cmp_height]
     jk_az_cmp = compute_azimuth_patterns(sim, model, freq_mhz, cmp_heights, ground, el=el_fixed)[cmp_height]
+    # Patterns for 0.5 wl dipole
+    dip05 = build_dipole_model(total_length=resonant_dipole_length(freq_mhz), segments=segments, radius=radius)
+    dip05_el = compute_elevation_patterns(sim, dip05, freq_mhz, cmp_heights, ground)[cmp_height]
+    dip05_az = compute_azimuth_patterns(sim, dip05, freq_mhz, cmp_heights, ground, el=el_fixed)[cmp_height]
+    # Patterns for 2-element Yagi (6% detune, 0.3 wl spacing)
+    yagi_model = build_two_element_yagi_model(freq_mhz, segments, radius, detune_frac=0.06, spacing_frac=0.3)
+    yagi_el = compute_elevation_patterns(sim, yagi_model, freq_mhz, cmp_heights, ground)[cmp_height]
+    yagi_az = compute_azimuth_patterns(sim, yagi_model, freq_mhz, cmp_heights, ground, el=el_fixed)[cmp_height]
 
-    # Combined comparison polar plot: both 44' and 0.5 wl scenarios
+    # Combined comparison polar plot: 8JK 44', 8JK 0.5 wl, Dipole 0.5 wl, Yagi (6%,0.3 wl)
     fig, (ax_el_cmp, ax_az_cmp) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
     # Prepare patterns
     jk44_el = jk_el_cmp; jk44_az = jk_az_cmp
     jk05_el = el_pats_hw[cmp_height]
     jk05_az = compute_azimuth_patterns(sim, model_half, freq_mhz, [cmp_height], ground, el=el_fixed)[cmp_height]
-    dip05 = build_dipole_model(total_length=resonant_dipole_length(freq_mhz), segments=segments, radius=radius)
-    dip05_el = compute_elevation_patterns(sim, dip05, freq_mhz, [cmp_height], ground)[cmp_height]
-    dip05_az = compute_azimuth_patterns(sim, dip05, freq_mhz, [cmp_height], ground, el=el_fixed)[cmp_height]
+    dip05_el = dip05_el; dip05_az = dip05_az
+    yagi_el = yagi_el; yagi_az = yagi_az
     # Elevation comparison
     raw_max_el_all = max(
         max(p['gain'] for p in jk44_el),
         max(p['gain'] for p in jk05_el),
         max(p['gain'] for p in dip05_el),
+        max(p['gain'] for p in yagi_el),
     )
     configure_polar_axes(ax_el_cmp, 'Elevation Comparison (az=0)', raw_max_el_all)
     for label, pat in [
         ("8JK - 44'", jk44_el),
         ("8JK - 0.5 wl", jk05_el),
         ("Dipole - 0.5 wl", dip05_el),
+        ("Yagi (6%,0.3 wl)", yagi_el),
     ]:
         data = sorted(pat, key=lambda p: p['el'])
         theta = np.radians([p['el'] for p in data])
@@ -197,12 +208,14 @@ def main():
         max(p['gain'] for p in jk44_az),
         max(p['gain'] for p in jk05_az),
         max(p['gain'] for p in dip05_az),
+        max(p['gain'] for p in yagi_az),
     )
     configure_polar_axes(ax_az_cmp, f'Azimuth Comparison (el={int(el_fixed)}°)', raw_max_az_all, direction=-1)
     for label, pat in [
         ("8JK - 44'", jk44_az),
         ("8JK - 0.5 wl", jk05_az),
         ("Dipole - 0.5 wl", dip05_az),
+        ("Yagi (6%,0.3 wl)", yagi_az),
     ]:
         data = sorted(pat, key=lambda p: p['az'])
         phi = np.radians([p['az'] for p in data])
@@ -210,12 +223,24 @@ def main():
         ax_az_cmp.plot(phi, r, label=label)
     ax_az_cmp.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
     plt.tight_layout()
-    output_comb = os.path.join(report.report_dir, '8_jk_vs_dipole_combined.png')
+    output_comb = os.path.join(report.report_dir, '8_jk_vs_dipole_vs_yagi_combined.png')
     if args.show_gui:
         plt.show()
     else:
         plt.savefig(output_comb)
-    report.add_plot("8JK vs Dipole Comparison (44' & 0.5 wl)", output_comb)
+    report.add_plot("8JK vs Dipole vs Yagi Comparison", output_comb)
+
+    # 6) Forward gain table at elevation 15°–35° in 5° steps
+    fwd_els = list(range(15, 36, 5))
+    fwd_rows = []
+    for el in fwd_els:
+        row = [el]
+        for pat in [jk44_el, jk05_el, dip05_el, yagi_el]:
+            gain = next(p['gain'] for p in pat if abs(p['el'] - el) < 1e-6)
+            row.append(f"{gain:.3f}")
+        fwd_rows.append(row)
+    fwd_headers = ["Elevation (deg)", "8JK - 44'", "8JK - 0.5 wl", "Dipole - 0.5 wl", "Yagi (6%,0.3 wl)"]
+    report.add_table("Forward Gain vs Elevation (15°–35°)", fwd_headers, fwd_rows)
 
     report.save()
 
