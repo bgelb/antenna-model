@@ -80,42 +80,63 @@ def main():
     el_fixed = 30.0
     az_pats = compute_azimuth_patterns(sim, model, freq_mhz, heights, ground, el=el_fixed)
 
-    # 5) Reflector detuning optimization: vary detune ratio from 0% to 10%
-    print("\nDetune (%) | Fwd Gain (dBi) | F/B (dB)")
-    results = []
-    for detune in np.linspace(0, 0.10, 11):
-        model_opt = AntennaModel()
-        model_opt.add_element(driven)
-        model_opt.add_feedpoint(element_index=0, segment=center_seg)
-        detuned_length = driven_length * (1 + detune)
-        half_detuned = detuned_length / 2.0
-        reflector = AntennaElement(
-            x1=-spacing, y1=-half_detuned, z1=0.0,
-            x2=-spacing, y2= half_detuned, z2=0.0,
-            segments=segments, radius=radius,
-        )
-        model_opt.add_element(reflector)
-        az_res = sim.simulate_azimuth_pattern(
-            model_opt, freq_mhz=freq_mhz, height_m=10.0,
-            ground=ground, el=30.0, az_step=5.0
-        )
-        fwd_gain = next(p['gain'] for p in az_res if abs(p['az']) < 1e-6)
-        back_gain = next(p['gain'] for p in az_res if abs(p['az'] - 180.0) < 1e-6)
-        fbr = fwd_gain - back_gain
-        results.append((detune, fwd_gain, fbr))
-    # Find peaks
-    max_fwd = max(results, key=lambda x: x[1])[1]
-    max_fbr = max(results, key=lambda x: x[2])[2]
-    for detune, fwd_gain, fbr in results:
-        fwd_str = f"{fwd_gain:14.2f}"
-        fbr_str = f"{fbr:8.2f}"
-        if abs(fwd_gain - max_fwd) < 1e-6:
-            fwd_str = f"\033[1;33m{fwd_gain:14.2f}\033[0m"
-        if abs(fbr - max_fbr) < 1e-6:
-            fbr_str = f"\033[1;36m{fbr:8.2f}\033[0m"
-        print(f"{detune*100:8.2f} | {fwd_str} | {fbr_str}")
+    # 5) Spacing sweep: Forward Gain and F/B tables across spacing fractions
+    detunes = np.linspace(0.0, 0.10, 11)
+    spacing_fracs = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40]
+    # Build Forward Gain and F/B matrices
+    fg_matrix = []
+    fb_matrix = []
+    for detune in detunes:
+        detuned_len = driven_length * (1 + detune)
+        half_detuned = detuned_len / 2.0
+        fg_row = []
+        fb_row = []
+        for frac in spacing_fracs:
+            spacing_val = frac * lambda_m
+            m2 = AntennaModel()
+            m2.add_element(driven)
+            m2.add_feedpoint(element_index=0, segment=center_seg)
+            ref = AntennaElement(
+                x1=-spacing_val, y1=-half_detuned, z1=0.0,
+                x2=-spacing_val, y2=half_detuned, z2=0.0,
+                segments=segments, radius=radius,
+            )
+            m2.add_element(ref)
+            az_res = sim.simulate_azimuth_pattern(
+                m2, freq_mhz=freq_mhz, height_m=10.0,
+                ground=ground, el=el_fixed, az_step=5.0
+            )
+            fwd = next(p['gain'] for p in az_res if abs(p['az']) < 1e-6)
+            back = next(p['gain'] for p in az_res if abs(p['az'] - 180.0) < 1e-6)
+            fg_row.append(fwd)
+            fb_row.append(fwd - back)
+        fg_matrix.append(fg_row)
+        fb_matrix.append(fb_row)
+    # Determine column peaks
+    fg_peaks = [max(col) for col in zip(*fg_matrix)]
+    fb_peaks = [max(col) for col in zip(*fb_matrix)]
+    # Print Forward Gain table with peak highlights
+    print("\nDetune (%) | " + " | ".join([f"{frac:.2f}λ" for frac in spacing_fracs]))
+    for i, detune in enumerate(detunes):
+        row_vals = []
+        for j, val in enumerate(fg_matrix[i]):
+            if abs(val - fg_peaks[j]) < 1e-6:
+                row_vals.append(f"\033[1;33m{val:7.2f}\033[0m")
+            else:
+                row_vals.append(f"{val:7.2f}")
+        print(f"{detune*100:8.2f} | " + " | ".join(row_vals))
+    # Print F/B ratio table with peak highlights
+    print("\nDetune (%) | " + " | ".join([f"{frac:.2f}λ" for frac in spacing_fracs]))
+    for i, detune in enumerate(detunes):
+        row_vals = []
+        for j, val in enumerate(fb_matrix[i]):
+            if abs(val - fb_peaks[j]) < 1e-6:
+                row_vals.append(f"\033[1;36m{val:7.2f}\033[0m")
+            else:
+                row_vals.append(f"{val:7.2f}")
+        print(f"{detune*100:8.2f} | " + " | ".join(row_vals))
 
-    # 4) Plot patterns
+    # 6) Plot patterns
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, 'output/2_el_yagi_pattern.png', args.show_gui)
 
 if __name__ == '__main__':
