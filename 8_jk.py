@@ -161,19 +161,15 @@ def main():
     report.add_plot('Azimuth and Elevation Patterns (8JK - 0.5 wl)', output_hw)
 
     # 5) Comparison with a simple dipole at h=10m
-    dipole_model = build_dipole_model(total_length=length_m, segments=segments, radius=radius)
     cmp_height = 10.0
     cmp_heights = [cmp_height]
     jk_el_cmp = compute_elevation_patterns(sim, model, freq_mhz, cmp_heights, ground)[cmp_height]
     jk_az_cmp = compute_azimuth_patterns(sim, model, freq_mhz, cmp_heights, ground, el=el_fixed)[cmp_height]
-    dip_el_cmp = compute_elevation_patterns(sim, dipole_model, freq_mhz, cmp_heights, ground)[cmp_height]
-    dip_az_cmp = compute_azimuth_patterns(sim, dipole_model, freq_mhz, cmp_heights, ground, el=el_fixed)[cmp_height]
 
     # Combined comparison polar plot: both 44' and 0.5 wl scenarios
     fig, (ax_el_cmp, ax_az_cmp) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
     # Prepare patterns
     jk44_el = jk_el_cmp; jk44_az = jk_az_cmp
-    dip44_el = dip_el_cmp; dip44_az = dip_az_cmp
     jk05_el = el_pats_hw[cmp_height]
     jk05_az = compute_azimuth_patterns(sim, model_half, freq_mhz, [cmp_height], ground, el=el_fixed)[cmp_height]
     dip05 = build_dipole_model(total_length=resonant_dipole_length(freq_mhz), segments=segments, radius=radius)
@@ -182,14 +178,12 @@ def main():
     # Elevation comparison
     raw_max_el_all = max(
         max(p['gain'] for p in jk44_el),
-        max(p['gain'] for p in dip44_el),
         max(p['gain'] for p in jk05_el),
         max(p['gain'] for p in dip05_el),
     )
     configure_polar_axes(ax_el_cmp, 'Elevation Comparison (az=0)', raw_max_el_all)
     for label, pat in [
         ("8JK - 44'", jk44_el),
-        ("Dipole - 44'", dip44_el),
         ("8JK - 0.5 wl", jk05_el),
         ("Dipole - 0.5 wl", dip05_el),
     ]:
@@ -201,14 +195,12 @@ def main():
     # Azimuth comparison
     raw_max_az_all = max(
         max(p['gain'] for p in jk44_az),
-        max(p['gain'] for p in dip44_az),
         max(p['gain'] for p in jk05_az),
         max(p['gain'] for p in dip05_az),
     )
     configure_polar_axes(ax_az_cmp, f'Azimuth Comparison (el={int(el_fixed)}°)', raw_max_az_all, direction=-1)
     for label, pat in [
         ("8JK - 44'", jk44_az),
-        ("Dipole - 44'", dip44_az),
         ("8JK - 0.5 wl", jk05_az),
         ("Dipole - 0.5 wl", dip05_az),
     ]:
