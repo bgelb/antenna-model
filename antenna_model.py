@@ -512,45 +512,45 @@ def plot_polar_patterns(
     """
     fig, (ax_el, ax_az) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    # Elevation pattern with true dB-to-linear amplitude scaling
+    # Elevation pattern with custom linear scaling
     raw_max = max(max(p['gain'] for p in elevation_patterns[h]) for h in heights)
+    MG = raw_max
     rel_db = [0, 3, 6, 10, 20, 30, 40]
-    # radial grid positions in amplitude for each dB tick
-    r_ticks = [10 ** (-d / 20.0) for d in rel_db]
-    labels = ["0 dB"] + [f"-{d} dB" for d in rel_db[1:]]
+    r_ticks = [0.89 ** (d / 2.0) for d in rel_db]
     ax_el.set_theta_zero_location('E')
     ax_el.set_theta_direction(1)
     ax_el.set_title('Elevation Pattern (az=0)', va='bottom')
     ax_el.set_rscale('linear')
-    ax_el.set_rgrids(r_ticks, labels=labels)
+    ax_el.set_rticks(r_ticks)
+    ax_el.set_yticklabels(["0 dB"] + [f"-{d} dB" for d in rel_db[1:]])
     ax_el.set_ylim(0, 1)
     ax_el.set_thetagrids(np.arange(0, 360, 30))
     ax_el.grid(True)
     for idx, h in enumerate(heights):
         data = sorted(elevation_patterns[h], key=lambda p: p['el'])
         theta = np.radians([p['el'] for p in data])
-        # amplitude ratio from relative gain to max (dB to linear)
-        r = [10 ** ((p['gain'] - raw_max) / 20.0) for p in data]
+        r = [0.89 ** ((MG - p['gain']) / 2.0) for p in data]
         label = legend_labels[idx] if legend_labels is not None else f"h={h}m"
         ax_el.plot(theta, r, label=label, color=colors[idx % len(colors)])
     ax_el.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
-    # Azimuth pattern with true dB-to-linear amplitude scaling
+    # Azimuth pattern with custom linear scaling
     raw_max_az = max(max(p['gain'] for p in azimuth_patterns[h]) for h in heights)
+    MG_az = raw_max_az
     rel_db_az = [0, 3, 6, 10, 20, 30, 40]
-    r_ticks_az = [10 ** (-d / 20.0) for d in rel_db_az]
-    labels_az = ["0 dB"] + [f"-{d} dB" for d in rel_db_az[1:]]
+    r_ticks_az = [0.89 ** (d / 2.0) for d in rel_db_az]
     ax_az.set_theta_zero_location('E')
     ax_az.set_theta_direction(-1)
     ax_az.set_title(f'Azimuth Pattern (el={int(el_fixed)}°)', va='bottom')
     ax_az.set_rscale('linear')
-    ax_az.set_rgrids(r_ticks_az, labels=labels_az)
+    ax_az.set_rticks(r_ticks_az)
+    ax_az.set_yticklabels(["0 dB"] + [f"-{d} dB" for d in rel_db_az[1:]])
     ax_az.set_ylim(0, 1)
     ax_az.set_thetagrids(np.arange(0, 360, 30))
     ax_az.grid(True)
     for idx, h in enumerate(heights):
         data = sorted(azimuth_patterns[h], key=lambda p: p['az'])
         phi = np.radians([p['az'] for p in data])
-        r = [10 ** ((p['gain'] - raw_max_az) / 20.0) for p in data]
+        r = [0.89 ** ((MG_az - p['gain']) / 2.0) for p in data]
         label = legend_labels[idx] if legend_labels is not None else f"h={h}m"
         ax_az.plot(phi, r, label=label, color=colors[idx % len(colors)])
     ax_az.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
