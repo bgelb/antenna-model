@@ -20,6 +20,7 @@ from antenna_model import (
     plot_polar_patterns,
     configure_polar_axes,
     Report,
+    resonant_dipole_length,
 )
 
 def main():
@@ -62,15 +63,40 @@ def main():
     model.add_feedpoint(0, center_seg, voltage=1+0j)
     model.add_feedpoint(1, center_seg, voltage=-1+0j)
 
+    # Build additional 8JK model with half-wave dipoles
+    half_wl = resonant_dipole_length(freq_mhz)  # full half-wave dipole length
+    half_len_wl = half_wl / 2.0
+    model_half = AntennaModel()
+    # Element 1 (half-wave) at origin
+    el1_hw = AntennaElement(
+        x1=0.0, y1=-half_len_wl, z1=0.0,
+        x2=0.0, y2= half_len_wl, z2=0.0,
+        segments=segments, radius=radius,
+    )
+    model_half.add_element(el1_hw)
+    # Element 2 offset along x-axis by same spacing
+    el2_hw = AntennaElement(
+        x1=spacing_m, y1=-half_len_wl, z1=0.0,
+        x2=spacing_m, y2= half_len_wl, z2=0.0,
+        segments=segments, radius=radius,
+    )
+    model_half.add_element(el2_hw)
+    # Feed half-wave model
+    model_half.add_feedpoint(0, center_seg, voltage=1+0j)
+    model_half.add_feedpoint(1, center_seg, voltage=-1+0j)
+
     sim = AntennaSimulator()
     heights = [5.0, 10.0, 15.0, 20.0]
 
-    # 1) Feedpoint Impedance vs Height
+    # 1) Feedpoint Impedance vs Height (44' elements)
     imp_list = compute_impedance_vs_heights(sim, model, freq_mhz, heights, ground)
     report = Report('8_jk')
-    report.add_table('Feedpoint Impedance vs Height', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list)
+    report.add_table("Feedpoint Impedance vs Height (8JK - 44')", ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list)
+    # 1a) Feedpoint Impedance vs Height (8JK - 0.5 wl)
+    imp_list_hw = compute_impedance_vs_heights(sim, model_half, freq_mhz, heights, ground)
+    report.add_table('Feedpoint Impedance vs Height (8JK - 0.5 wl)', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list_hw)
 
-    # 2) Elevation patterns and gain table
+    # 2) Elevation patterns and gain table (44' elements)
     el_pats = compute_elevation_patterns(sim, model, freq_mhz, heights, ground)
     el_angles = list(range(0, 181, 5))
     headers = ['Elevation (deg)'] + [f'{h:.1f} m' for h in heights]
@@ -94,16 +120,45 @@ def main():
             else:
                 fr.append('')
         formatted_rows.append(fr)
-    report.add_table('Gain at az=0 for Elevation 0–180°', headers, formatted_rows)
+    report.add_table('Gain at az=0 for Elevation 0–180° (8JK - 44\')', headers, formatted_rows)
+    # 2a) Elevation patterns and gain table (8JK - 0.5 wl)
+    el_pats_hw = compute_elevation_patterns(sim, model_half, freq_mhz, heights, ground)
+    rows_hw = []
+    for el in el_angles:
+        vals = [next((p['gain'] for p in el_pats_hw[h] if abs(p['el'] - el) < 1e-6), '') for h in heights]
+        rows_hw.append([el] + vals)
+    # Bold peaks per height for half-wave
+    peaks_hw = []
+    for col in range(1, len(headers)):
+        col_vals = [r[col] for r in rows_hw if isinstance(r[col], (int, float))]
+        peaks_hw.append(max(col_vals) if col_vals else None)
+    formatted_hw = []
+    for r in rows_hw:
+        fr = [r[0]]
+        for idx, val in enumerate(r[1:], start=1):
+            if isinstance(val, (int, float)) and peaks_hw[idx-1] is not None and abs(val - peaks_hw[idx-1]) < 1e-6:
+                fr.append(f"**{val:.3f}**")
+            elif isinstance(val, (int, float)):
+                fr.append(f"{val:.3f}")
+            else:
+                fr.append('')
+        formatted_hw.append(fr)
+    report.add_table('Gain at az=0 for Elevation 0–180° (8JK - 0.5 wl)', headers, formatted_hw)
 
     # 3) Azimuth patterns at fixed elevation
     el_fixed = 30.0
     az_pats = compute_azimuth_patterns(sim, model, freq_mhz, heights, ground, el=el_fixed)
 
-    # 4) Polar patterns plot
+    # 4) Polar patterns plot (44' elements)
     output_file = os.path.join(report.report_dir, '8_jk_pattern.png')
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
-    report.add_plot('Azimuth and Elevation Patterns', output_file)
+    report.add_plot('Azimuth and Elevation Patterns (8JK - 44\')', output_file)
+    # 4a) Polar patterns plot for half-wave model
+    el_pats_hw = el_pats_hw
+    az_pats_hw = compute_azimuth_patterns(sim, model_half, freq_mhz, heights, ground, el=el_fixed)
+    output_hw = os.path.join(report.report_dir, '8_jk_pattern_05wl.png')
+    plot_polar_patterns(el_pats_hw, az_pats_hw, heights, el_fixed, output_hw, args.show_gui)
+    report.add_plot('Azimuth and Elevation Patterns (8JK - 0.5 wl)', output_hw)
 
     # 5) Comparison with a simple dipole at h=10m
     dipole_model = build_dipole_model(total_length=length_m, segments=segments, radius=radius)
@@ -114,33 +169,61 @@ def main():
     dip_el_cmp = compute_elevation_patterns(sim, dipole_model, freq_mhz, cmp_heights, ground)[cmp_height]
     dip_az_cmp = compute_azimuth_patterns(sim, dipole_model, freq_mhz, cmp_heights, ground, el=el_fixed)[cmp_height]
 
-    # Manual comparison polar plot
+    # Combined comparison polar plot: both 44' and 0.5 wl scenarios
     fig, (ax_el_cmp, ax_az_cmp) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
+    # Prepare patterns
+    jk44_el = jk_el_cmp; jk44_az = jk_az_cmp
+    dip44_el = dip_el_cmp; dip44_az = dip_az_cmp
+    jk05_el = el_pats_hw[cmp_height]
+    jk05_az = compute_azimuth_patterns(sim, model_half, freq_mhz, [cmp_height], ground, el=el_fixed)[cmp_height]
+    dip05 = build_dipole_model(total_length=resonant_dipole_length(freq_mhz), segments=segments, radius=radius)
+    dip05_el = compute_elevation_patterns(sim, dip05, freq_mhz, [cmp_height], ground)[cmp_height]
+    dip05_az = compute_azimuth_patterns(sim, dip05, freq_mhz, [cmp_height], ground, el=el_fixed)[cmp_height]
     # Elevation comparison
-    raw_max_el = max(max(p['gain'] for p in jk_el_cmp), max(p['gain'] for p in dip_el_cmp))
-    configure_polar_axes(ax_el_cmp, 'Elevation Comparison (az=0)', raw_max_el)
-    for label, pat in [('8JK', jk_el_cmp), ('Dipole', dip_el_cmp)]:
+    raw_max_el_all = max(
+        max(p['gain'] for p in jk44_el),
+        max(p['gain'] for p in dip44_el),
+        max(p['gain'] for p in jk05_el),
+        max(p['gain'] for p in dip05_el),
+    )
+    configure_polar_axes(ax_el_cmp, 'Elevation Comparison (az=0)', raw_max_el_all)
+    for label, pat in [
+        ("8JK - 44'", jk44_el),
+        ("Dipole - 44'", dip44_el),
+        ("8JK - 0.5 wl", jk05_el),
+        ("Dipole - 0.5 wl", dip05_el),
+    ]:
         data = sorted(pat, key=lambda p: p['el'])
         theta = np.radians([p['el'] for p in data])
-        r = [10 ** ((p['gain'] - raw_max_el) / 20.0) for p in data]
+        r = [0.89 ** ((raw_max_el_all - p['gain']) / 2.0) for p in data]
         ax_el_cmp.plot(theta, r, label=label)
-    ax_el_cmp.legend()
+    ax_el_cmp.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
     # Azimuth comparison
-    raw_max_az = max(max(p['gain'] for p in jk_az_cmp), max(p['gain'] for p in dip_az_cmp))
-    configure_polar_axes(ax_az_cmp, f'Azimuth Comparison (el={int(el_fixed)}°)', raw_max_az, direction=-1)
-    for label, pat in [('8JK', jk_az_cmp), ('Dipole', dip_az_cmp)]:
+    raw_max_az_all = max(
+        max(p['gain'] for p in jk44_az),
+        max(p['gain'] for p in dip44_az),
+        max(p['gain'] for p in jk05_az),
+        max(p['gain'] for p in dip05_az),
+    )
+    configure_polar_axes(ax_az_cmp, f'Azimuth Comparison (el={int(el_fixed)}°)', raw_max_az_all, direction=-1)
+    for label, pat in [
+        ("8JK - 44'", jk44_az),
+        ("Dipole - 44'", dip44_az),
+        ("8JK - 0.5 wl", jk05_az),
+        ("Dipole - 0.5 wl", dip05_az),
+    ]:
         data = sorted(pat, key=lambda p: p['az'])
         phi = np.radians([p['az'] for p in data])
-        r = [10 ** ((p['gain'] - raw_max_az) / 20.0) for p in data]
+        r = [0.89 ** ((raw_max_az_all - p['gain']) / 2.0) for p in data]
         ax_az_cmp.plot(phi, r, label=label)
-    ax_az_cmp.legend()
+    ax_az_cmp.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
     plt.tight_layout()
-    output_cmp = os.path.join(report.report_dir, '8_jk_vs_dipole.png')
+    output_comb = os.path.join(report.report_dir, '8_jk_vs_dipole_combined.png')
     if args.show_gui:
         plt.show()
     else:
-        plt.savefig(output_cmp)
-    report.add_plot('8JK vs Dipole Comparison', output_cmp)
+        plt.savefig(output_comb)
+    report.add_plot("8JK vs Dipole Comparison (44' & 0.5 wl)", output_comb)
 
     report.save()
 
