@@ -17,6 +17,7 @@ from antenna_model import (
     plot_polar_patterns,
     Report,
 )
+import os
 
 def main():
     parser = argparse.ArgumentParser(description="Dipole pattern analysis and plotting.")
@@ -76,7 +77,7 @@ def main():
     az_pats = compute_azimuth_patterns(sim, model, freq_mhz, heights, ground, el=el_fixed)
 
     # 4) Plot patterns
-    output_file = 'output/pattern_comparison_all_heights.png'
+    output_file = os.path.join(report.report_dir, 'pattern_comparison_all_heights.png')
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
     report.add_plot(f'Azimuth Pattern (el={int(el_fixed)}°)', output_file)
     report.save()

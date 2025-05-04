@@ -19,6 +19,8 @@ from antenna_model import (
     plot_polar_patterns,
     Report,
 )
+from typing import Dict, List
+import os
 
 def main():
     parser = argparse.ArgumentParser(description="2-element Yagi pattern analysis and plotting.")
@@ -163,8 +165,39 @@ def main():
         rows_fb.append(row)
     report.add_table('Front-to-Back Ratio vs Detune (%) and Spacing', headers_sweep, rows_fb)
 
+    # 7) Spacing-sweep polar patterns at 6% detune, height 10m
+    detune_fixed = 0.06
+    spacing_elev_pats: Dict[float, List[Dict[str, float]]] = {}
+    spacing_az_pats: Dict[float, List[Dict[str, float]]] = {}
+    for frac in spacing_fracs:
+        # Build detuned two-element model
+        detuned_len = driven_length * (1 + detune_fixed)
+        half_detuned = detuned_len / 2.0
+        m2 = AntennaModel()
+        # driven element
+        m2.add_element(driven)
+        m2.add_feedpoint(element_index=0, segment=center_seg)
+        # passive element spaced by frac * λ
+        spacing_val = frac * lambda_m
+        ref = AntennaElement(
+            x1=-spacing_val, y1=-half_detuned, z1=0.0,
+            x2=-spacing_val, y2= half_detuned, z2=0.0,
+            segments=segments, radius=radius,
+        )
+        m2.add_element(ref)
+        # Simulate elevation (az=0) and azimuth (el=el_fixed) patterns
+        res_e = sim.simulate_pattern(m2, freq_mhz=freq_mhz, height_m=10.0, ground=ground, el_step=5.0, az_step=360.0)
+        spacing_elev_pats[frac] = res_e['pattern']
+        spacing_az_pats[frac] = sim.simulate_azimuth_pattern(
+            m2, freq_mhz=freq_mhz, height_m=10.0, ground=ground, el=el_fixed, az_step=5.0
+        )
+    # Plot spacing-sweep polar patterns
+    sweep_plot = os.path.join(report.report_dir, 'spacing_sweep.png')
+    plot_polar_patterns(spacing_elev_pats, spacing_az_pats, spacing_fracs, el_fixed, sweep_plot, args.show_gui)
+    report.add_plot('Spacing-Sweep Polar Patterns', sweep_plot)
+
     # 6) Plot patterns
-    output_file = 'output/2_el_yagi_pattern.png'
+    output_file = os.path.join(report.report_dir, '2_el_yagi_pattern.png')
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
     report.add_plot(f'Azimuth Pattern (el={int(el_fixed)}°)', output_file)
     report.save()

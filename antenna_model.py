@@ -4,6 +4,8 @@ import math
 import re
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import shutil
 
 def feet_to_meters(feet: float) -> float:
     """Convert feet to meters."""
@@ -533,7 +535,6 @@ class Report:
         report.save()
     """
     def __init__(self, name: str, base_dir: str = 'output'):
-        import os
         self.name = name
         self.base_dir = base_dir
         self.report_dir = os.path.join(self.base_dir, self.name)
@@ -558,19 +559,15 @@ class Report:
         self.lines.append("")
 
     def add_plot(self, title: str, image_path: str):
-        # Copy image into report directory and add markdown image link
-        import os, shutil
+        # Section header for plot
         self.lines.append(f"## {title}")
         self.lines.append("")
-        dest = os.path.join(self.report_dir, os.path.basename(image_path))
-        shutil.copy(image_path, dest)
-        # Embed image
+        # Embed image (assume already in report dir)
         self.lines.append(f"![{title}]({os.path.basename(image_path)})")
         self.lines.append("")
 
     def save(self):
         # Write markdown file
-        import os
         md_path = os.path.join(self.report_dir, f"{self.name}.md")
         with open(md_path, 'w') as f:
             f.write("\n".join(self.lines))
