@@ -1,2 +1,1 @@
-# Ignore output directory
-# output/ 
+__pycache__
