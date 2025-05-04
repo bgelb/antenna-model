@@ -110,6 +110,16 @@
 
 ![Azimuth and Elevation Patterns (8JK - 0.5 wl)](8_jk_pattern_05wl.png)
 
-## 8JK vs Dipole Comparison (44' & 0.5 wl)
+## 8JK vs Dipole vs Yagi Comparison
 
-![8JK vs Dipole Comparison (44' & 0.5 wl)](8_jk_vs_dipole_combined.png)
+![8JK vs Dipole vs Yagi Comparison](8_jk_vs_dipole_vs_yagi_combined.png)
+
+## Forward Gain vs Elevation (15°–35°)
+
+| Elevation (deg) | 8JK - 44' | 8JK - 0.5 wl | Dipole - 0.5 wl | Yagi (6%,0.3 wl) |
+| --- | --- | --- | --- | --- |
+| 15 | 7.526 | 7.289 | 4.379 | 7.289 |
+| 20 | 8.885 | 8.647 | 5.917 | 8.847 |
+| 25 | 9.411 | 9.173 | 6.684 | 9.631 |
+| 30 | 9.308 | 9.070 | 6.891 | 9.848 |
+| 35 | 8.679 | 8.441 | 6.652 | 9.605 |
