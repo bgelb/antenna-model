@@ -61,9 +61,13 @@ class AntennaModel:
         """Add an antenna element (straight wire) to the model."""
         self.elements.append(element)
 
-    def add_feedpoint(self, element_index: int, segment: int) -> None:
-        """Add a feedpoint on the specified element and segment index."""
-        self.feedpoints.append({'element_index': element_index, 'segment': segment})
+    def add_feedpoint(self, element_index: int, segment: int, voltage: complex = 1+0j) -> None:
+        """Add a feedpoint on the specified element/segment with a complex excitation voltage (real+imag)."""
+        self.feedpoints.append({
+            'element_index': element_index,
+            'segment': segment,
+            'voltage': voltage,
+        })
 
     @property
     def wires(self) -> List[Dict[str, Any]]:
@@ -241,7 +245,6 @@ class AntennaSimulator:
             freq_mhz=freq_mhz,
             height_m=height_m,
             ground_opts=ground_opts,
-            excitation_pulse="10,1",
             pattern_opts=pattern_opts_0,
             option="far-field",
             ff_distance=ff_distance
@@ -256,7 +259,6 @@ class AntennaSimulator:
             freq_mhz=freq_mhz,
             height_m=height_m,
             ground_opts=ground_opts,
-            excitation_pulse="10,1",
             pattern_opts=pattern_opts_180,
             option="far-field",
             ff_distance=ff_distance
@@ -309,7 +311,6 @@ class AntennaSimulator:
             freq_mhz=freq_mhz,
             height_m=height_m,
             ground_opts=ground_opts,
-            excitation_pulse='10,1',
             pattern_opts=pattern_opts,
             option='far-field'
         )
