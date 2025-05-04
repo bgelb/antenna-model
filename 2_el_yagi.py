@@ -200,6 +200,34 @@ def main():
     output_file = os.path.join(report.report_dir, '2_el_yagi_pattern.png')
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
     report.add_plot(f'Azimuth Pattern (el={int(el_fixed)}°)', output_file)
+
+    # 8) Detune-sweep polar patterns at spacing=0.3λ, height 10m
+    spacing_fixed = 0.30
+    detune_steps = np.arange(0.0, 0.1001, 0.02)
+    detune_elev_pats: Dict[float, List[Dict[str, float]]] = {}
+    detune_az_pats: Dict[float, List[Dict[str, float]]] = {}
+    for detune in detune_steps:
+        detuned_len = driven_length * (1 + detune)
+        half_detuned = detuned_len / 2.0
+        m2 = AntennaModel()
+        m2.add_element(driven)
+        m2.add_feedpoint(element_index=0, segment=center_seg)
+        spacing_val = spacing_fixed * lambda_m
+        ref = AntennaElement(
+            x1=-spacing_val, y1=-half_detuned, z1=0.0,
+            x2=-spacing_val, y2=half_detuned, z2=0.0,
+            segments=segments, radius=radius,
+        )
+        m2.add_element(ref)
+        res_e = sim.simulate_pattern(m2, freq_mhz=freq_mhz, height_m=10.0, ground=ground, el_step=5.0, az_step=360.0)
+        detune_elev_pats[detune] = res_e['pattern']
+        detune_az_pats[detune] = sim.simulate_azimuth_pattern(
+            m2, freq_mhz=freq_mhz, height_m=10.0, ground=ground, el=el_fixed, az_step=5.0
+        )
+    detune_plot = os.path.join(report.report_dir, 'detune_sweep.png')
+    plot_polar_patterns(detune_elev_pats, detune_az_pats, detune_steps, el_fixed, detune_plot, args.show_gui)
+    report.add_plot('Detune-Sweep Polar Patterns (spacing=0.30λ)', detune_plot)
+
     report.save()
 
 if __name__ == '__main__':
