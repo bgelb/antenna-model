@@ -14,11 +14,10 @@ from antenna_model import (
     AntennaSimulator,
     resonant_dipole_length,
     compute_impedance_vs_heights,
-    print_impedance_table,
     compute_elevation_patterns,
     compute_azimuth_patterns,
-    print_gain_table,
     plot_polar_patterns,
+    Report,
 )
 
 def main():
@@ -66,15 +65,39 @@ def main():
     sim = AntennaSimulator()
     # 1) Feedpoint impedance vs height
     heights = [5.0, 10.0, 15.0, 20.0]
-    print("Feedpoint impedance vs height (average ground):")
     imp_list = compute_impedance_vs_heights(sim, model, freq_mhz, heights, ground)
-    print_impedance_table(imp_list)
 
-    # 2) Compute elevation patterns and print gain table
+    # Create report
+    report = Report('2_el_yagi')
+    report.add_table('Feedpoint Impedance vs Height', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list)
+
+    # 2) Compute elevation patterns and build bolded gain table
     el_pats = compute_elevation_patterns(sim, model, freq_mhz, heights, ground)
     el_angles = list(range(0, 181, 5))
-    print("\nGain at az=0 for el=0 to 180° (average ground), for various heights:")
-    print_gain_table(el_pats, heights, el_angles)
+    # Build raw rows
+    headers = ['Elevation (deg)'] + [f'{h:.1f} m' for h in heights]
+    rows = []
+    for el in el_angles:
+        vals = [next((p['gain'] for p in el_pats[h] if abs(p['el'] - el) < 1e-6), '') for h in heights]
+        rows.append([el] + vals)
+    # Determine peak gain per height column
+    peaks = []
+    for col in range(1, len(headers)):
+        col_vals = [r[col] for r in rows if isinstance(r[col], (int, float))]
+        peaks.append(max(col_vals) if col_vals else None)
+    # Format rows, bold peak values
+    formatted_rows = []
+    for r in rows:
+        fr = [r[0]]
+        for idx, val in enumerate(r[1:], start=1):
+            if isinstance(val, (int, float)) and peaks[idx-1] is not None and abs(val - peaks[idx-1]) < 1e-6:
+                fr.append(f"**{val:.3f}**")
+            elif isinstance(val, (int, float)):
+                fr.append(f"{val:.3f}")
+            else:
+                fr.append('')
+        formatted_rows.append(fr)
+    report.add_table('Gain at az=0 for Elevation 0–180°', headers, formatted_rows)
 
     # 3) Compute azimuth patterns at fixed elevation and plot
     el_fixed = 30.0
@@ -112,32 +135,39 @@ def main():
             fb_row.append(fwd - back)
         fg_matrix.append(fg_row)
         fb_matrix.append(fb_row)
+    # Build sweep tables and add to report
     # Determine column peaks
     fg_peaks = [max(col) for col in zip(*fg_matrix)]
     fb_peaks = [max(col) for col in zip(*fb_matrix)]
-    # Print Forward Gain table with peak highlights
-    print("\nDetune (%) | " + " | ".join([f"{frac:.2f}λ" for frac in spacing_fracs]))
+    headers_sweep = ['Detune (%)'] + [f'{frac:.2f}λ' for frac in spacing_fracs]
+    # Forward Gain vs Detune (%) and Spacing
+    rows_fg = []
     for i, detune in enumerate(detunes):
-        row_vals = []
+        row = [f'{detune*100:.2f}']
         for j, val in enumerate(fg_matrix[i]):
             if abs(val - fg_peaks[j]) < 1e-6:
-                row_vals.append(f"\033[1;33m{val:7.2f}\033[0m")
+                row.append(f'**{val:.2f}**')
             else:
-                row_vals.append(f"{val:7.2f}")
-        print(f"{detune*100:8.2f} | " + " | ".join(row_vals))
-    # Print F/B ratio table with peak highlights
-    print("\nDetune (%) | " + " | ".join([f"{frac:.2f}λ" for frac in spacing_fracs]))
+                row.append(f'{val:.2f}')
+        rows_fg.append(row)
+    report.add_table('Forward Gain vs Detune (%) and Spacing', headers_sweep, rows_fg)
+    # Front-to-Back Ratio vs Detune (%) and Spacing
+    rows_fb = []
     for i, detune in enumerate(detunes):
-        row_vals = []
+        row = [f'{detune*100:.2f}']
         for j, val in enumerate(fb_matrix[i]):
             if abs(val - fb_peaks[j]) < 1e-6:
-                row_vals.append(f"\033[1;36m{val:7.2f}\033[0m")
+                row.append(f'**{val:.2f}**')
             else:
-                row_vals.append(f"{val:7.2f}")
-        print(f"{detune*100:8.2f} | " + " | ".join(row_vals))
+                row.append(f'{val:.2f}')
+        rows_fb.append(row)
+    report.add_table('Front-to-Back Ratio vs Detune (%) and Spacing', headers_sweep, rows_fb)
 
     # 6) Plot patterns
-    plot_polar_patterns(el_pats, az_pats, heights, el_fixed, 'output/2_el_yagi_pattern.png', args.show_gui)
+    output_file = 'output/2_el_yagi_pattern.png'
+    plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
+    report.add_plot(f'Azimuth Pattern (el={int(el_fixed)}°)', output_file)
+    report.save()
 
 if __name__ == '__main__':
     main() 
