@@ -174,6 +174,39 @@ def main():
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
     report.add_plot('Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)', output_file)
 
+    # 6a) Comparison plot: Yagi vs Dipole at h=10m, detune=6%, spacing=0.3λ
+    # Build Yagi model at detune=6%, spacing=0.3λ
+    detune_cmp = 0.06
+    spacing_cmp = 0.30
+    yagi_len = driven_length * (1 + detune_cmp)
+    half_yagi = yagi_len / 2.0
+    spacing_val = spacing_cmp * lambda_m
+    yagi_model = AntennaModel()
+    yagi_model.add_element(driven)
+    yagi_model.add_feedpoint(element_index=0, segment=center_seg)
+    yagi_reflector = AntennaElement(
+        x1=-spacing_val, y1=-half_yagi, z1=0.0,
+        x2=-spacing_val, y2=half_yagi, z2=0.0,
+        segments=segments, radius=radius,
+    )
+    yagi_model.add_element(yagi_reflector)
+    # Dipole model
+    from antenna_model import build_dipole_model
+    dipole_model = build_dipole_model(total_length=driven_length, segments=segments, radius=radius)
+    # Simulate both at h=10m
+    cmp_height = 10.0
+    cmp_heights = [cmp_height]
+    yagi_el_pat = compute_elevation_patterns(sim, yagi_model, freq_mhz, cmp_heights, ground)[cmp_height]
+    yagi_az_pat = compute_azimuth_patterns(sim, yagi_model, freq_mhz, cmp_heights, ground, el=el_fixed)[cmp_height]
+    dipole_el_pat = compute_elevation_patterns(sim, dipole_model, freq_mhz, cmp_heights, ground)[cmp_height]
+    dipole_az_pat = compute_azimuth_patterns(sim, dipole_model, freq_mhz, cmp_heights, ground, el=el_fixed)[cmp_height]
+    cmp_elev_pats = {"Yagi": yagi_el_pat, "Dipole": dipole_el_pat}
+    cmp_az_pats = {"Yagi": yagi_az_pat, "Dipole": dipole_az_pat}
+    cmp_labels = ["Yagi (detune=6%, spacing=0.30λ)", "Dipole"]
+    cmp_plot = os.path.join(report.report_dir, 'yagi_vs_dipole.png')
+    plot_polar_patterns(cmp_elev_pats, cmp_az_pats, list(cmp_elev_pats.keys()), el_fixed, cmp_plot, args.show_gui, legend_labels=cmp_labels)
+    report.add_plot('Yagi vs Dipole Comparison (h=10m, detune=6%, spacing=0.30λ)', cmp_plot)
+
     # 7) Spacing-sweep polar patterns at 6% detune, height 10m
     detune_fixed = 0.06
     spacing_elev_pats: Dict[float, List[Dict[str, float]]] = {}

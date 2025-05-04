@@ -87,6 +87,10 @@
 
 ![Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)](2_el_yagi_pattern.png)
 
+## Yagi vs Dipole Comparison (h=10m, detune=6%, spacing=0.30λ)
+
+![Yagi vs Dipole Comparison (h=10m, detune=6%, spacing=0.30λ)](yagi_vs_dipole.png)
+
 ## Spacing-Sweep Polar Patterns (h=10m, detune=6%)
 
 ![Spacing-Sweep Polar Patterns (h=10m, detune=6%)](spacing_sweep.png)
