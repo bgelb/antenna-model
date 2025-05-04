@@ -199,7 +199,7 @@ def main():
     sweep_plot = os.path.join(report.report_dir, 'spacing_sweep.png')
     spacing_labels = [f"d={frac:.2f}λ" for frac in spacing_fracs]
     plot_polar_patterns(spacing_elev_pats, spacing_az_pats, spacing_fracs, el_fixed, sweep_plot, args.show_gui, legend_labels=spacing_labels)
-    report.add_plot('Spacing-Sweep Polar Patterns', sweep_plot)
+    report.add_plot('Spacing-Sweep Polar Patterns (h=10m, detune=6%)', sweep_plot)
 
     # 6) Plot patterns
     output_file = os.path.join(report.report_dir, '2_el_yagi_pattern.png')
@@ -232,7 +232,7 @@ def main():
     detune_plot = os.path.join(report.report_dir, 'detune_sweep.png')
     detune_labels = [f"{int(round(d*100))}%" for d in detune_steps]
     plot_polar_patterns(detune_elev_pats, detune_az_pats, detune_steps, el_fixed, detune_plot, args.show_gui, legend_labels=detune_labels)
-    report.add_plot('Detune-Sweep Polar Patterns (spacing=0.30λ)', detune_plot)
+    report.add_plot('Detune-Sweep Polar Patterns (h=10m, spacing=0.30λ)', detune_plot)
 
     report.save()
 
