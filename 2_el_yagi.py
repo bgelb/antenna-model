@@ -169,6 +169,11 @@ def main():
         rows_fb.append(row)
     report.add_table('Front-to-Back Ratio vs Detune (%) and Spacing', headers_sweep, rows_fb)
 
+    # 6) Plot patterns (main az/el plot FIRST in report)
+    output_file = os.path.join(report.report_dir, '2_el_yagi_pattern.png')
+    plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
+    report.add_plot('Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)', output_file)
+
     # 7) Spacing-sweep polar patterns at 6% detune, height 10m
     detune_fixed = 0.06
     spacing_elev_pats: Dict[float, List[Dict[str, float]]] = {}
@@ -200,11 +205,6 @@ def main():
     spacing_labels = [f"d={frac:.2f}λ" for frac in spacing_fracs]
     plot_polar_patterns(spacing_elev_pats, spacing_az_pats, spacing_fracs, el_fixed, sweep_plot, args.show_gui, legend_labels=spacing_labels)
     report.add_plot('Spacing-Sweep Polar Patterns (h=10m, detune=6%)', sweep_plot)
-
-    # 6) Plot patterns
-    output_file = os.path.join(report.report_dir, '2_el_yagi_pattern.png')
-    plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
-    report.add_plot('Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)', output_file)
 
     # 8) Detune-sweep polar patterns at spacing=0.3λ, height 10m
     spacing_fixed = 0.30

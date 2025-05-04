@@ -83,13 +83,13 @@
 | 9.00 | 0.545 | 8.42 | 10.04 | 10.86 | 11.04 | 10.64 | 9.67 | 8.08 |
 | 10.00 | 0.550 | 7.35 | 8.85 | 9.61 | 9.78 | 9.39 | 8.45 | 6.92 |
 
-## Spacing-Sweep Polar Patterns (h=10m, detune=6%)
-
-![Spacing-Sweep Polar Patterns (h=10m, detune=6%)](spacing_sweep.png)
-
 ## Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)
 
 ![Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)](2_el_yagi_pattern.png)
+
+## Spacing-Sweep Polar Patterns (h=10m, detune=6%)
+
+![Spacing-Sweep Polar Patterns (h=10m, detune=6%)](spacing_sweep.png)
 
 ## Detune-Sweep Polar Patterns (h=10m, spacing=0.30λ)
 
