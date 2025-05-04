@@ -204,7 +204,7 @@ def main():
     # 6) Plot patterns
     output_file = os.path.join(report.report_dir, '2_el_yagi_pattern.png')
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
-    report.add_plot('Azimuth and Elevation Plot (detune=6%, spacing=0.30λ, h=10m)', output_file)
+    report.add_plot('Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)', output_file)
 
     # 8) Detune-sweep polar patterns at spacing=0.3λ, height 10m
     spacing_fixed = 0.30

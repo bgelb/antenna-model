@@ -87,9 +87,9 @@
 
 ![Spacing-Sweep Polar Patterns (h=10m, detune=6%)](spacing_sweep.png)
 
-## Azimuth and Elevation Plot (detune=6%, spacing=0.30λ, h=10m)
+## Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)
 
-![Azimuth and Elevation Plot (detune=6%, spacing=0.30λ, h=10m)](2_el_yagi_pattern.png)
+![Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)](2_el_yagi_pattern.png)
 
 ## Detune-Sweep Polar Patterns (h=10m, spacing=0.30λ)
 
