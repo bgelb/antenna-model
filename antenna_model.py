@@ -510,8 +510,9 @@ def configure_polar_axes(
     """
     if rel_db is None:
         rel_db = [0, 3, 6, 10, 20, 30, 40]
-    # radial grid positions in linear amplitude
-    r_ticks = [10 ** (-d / 20.0) for d in rel_db]
+    # radial grid positions in linear amplitude (original 0.89-based scale)
+    # 0.89^(d/2) maps approximately to -d dB ticks
+    r_ticks = [0.89 ** (d / 2.0) for d in rel_db]
     labels = ['0 dB'] + [f'-{d} dB' for d in rel_db[1:]]
     ax.set_theta_zero_location(zero_loc)
     ax.set_theta_direction(direction)
@@ -538,29 +539,25 @@ def plot_polar_patterns(
     fig, (ax_el, ax_az) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     # Elevation pattern
+    # Determine maximum gain (MG) for normalization
     raw_max = max(max(p['gain'] for p in elevation_patterns[h]) for h in heights)
     configure_polar_axes(ax_el, 'Elevation Pattern (az=0)', raw_max)
     for idx, h in enumerate(heights):
         data = sorted(elevation_patterns[h], key=lambda p: p['el'])
         theta = np.radians([p['el'] for p in data])
-        # amplitude ratio relative to max gain (dB to linear)
-        r = [10 ** ((p['gain'] - raw_max) / 20.0) for p in data]
+        # amplitude ratio relative to max gain (original 0.89-based scaling: 0.89^((MG - gain)/2))
+        r = [0.89 ** ((raw_max - p['gain']) / 2.0) for p in data]
         label = legend_labels[idx] if legend_labels is not None else f"h={h}m"
         ax_el.plot(theta, r, label=label, color=colors[idx % len(colors)])
     ax_el.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
     # Azimuth pattern
+    # Determine max gain for azimuth
     raw_max_az = max(max(p['gain'] for p in azimuth_patterns[h]) for h in heights)
-    configure_polar_axes(
-        ax_az,
-        f'Azimuth Pattern (el={int(el_fixed)}°)',
-        raw_max_az,
-        zero_loc='E',
-        direction=-1
-    )
+    configure_polar_axes(ax_az, f'Azimuth Pattern (el={int(el_fixed)}°)', raw_max_az, zero_loc='E', direction=-1)
     for idx, h in enumerate(heights):
         data = sorted(azimuth_patterns[h], key=lambda p: p['az'])
         phi = np.radians([p['az'] for p in data])
-        r = [10 ** ((p['gain'] - raw_max_az) / 20.0) for p in data]
+        r = [0.89 ** ((raw_max_az - p['gain']) / 2.0) for p in data]
         label = legend_labels[idx] if legend_labels is not None else f"h={h}m"
         ax_az.plot(phi, r, label=label, color=colors[idx % len(colors)])
     ax_az.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
