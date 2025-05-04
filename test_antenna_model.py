@@ -1,5 +1,14 @@
 import pytest
-from antenna_model import build_dipole_model, AntennaSimulator, resonant_dipole_length, get_ground_opts, feet_to_meters, meters_to_feet
+from antenna_model import (
+    build_dipole_model,
+    AntennaSimulator,
+    resonant_dipole_length,
+    get_ground_opts,
+    feet_to_meters,
+    meters_to_feet,
+    AntennaModel,
+    AntennaElement,
+)
 import re
 
 def test_resonant_dipole_length():
@@ -89,4 +98,62 @@ def test_dipole_impedance_10m():
         print(f"Feedpoint impedance at 10m ({ground} ground): R={R:.5f} Ω, X={X:.5f} Ω")
         if ground == "average":
             assert R == pytest.approx(expected[0], rel=0.01), f"R at 10m: got {R}, expected {expected[0]}"
-            assert X == pytest.approx(expected[1], rel=0.01), f"X at 10m: got {X}, expected {expected[1]}" 
+            assert X == pytest.approx(expected[1], rel=0.01), f"X at 10m: got {X}, expected {expected[1]}"
+
+class TestAntennaModel:
+    def test_broadside_dipole_phased_symmetry(self):
+        """Two half-wave dipoles spaced 0.125 λ apart and fed 180° out of phase
+        should yield a bidirectional broadside pattern that is symmetric in the
+        horizontal plane and exhibits a deep null at the zenith (90° el)."""
+        freq_mhz = 14.1
+        # Wavelength in metres ≈ 300 / f(MHz)
+        lam = 300.0 / freq_mhz
+        spacing = 0.125 * lam  # 0.125 λ centre-to-centre spacing
+
+        # Build element geometry (y-axis dipoles)
+        segs = 21
+        radius = 0.001
+        length = resonant_dipole_length(freq_mhz)
+        half_len = length / 2.0
+
+        model = AntennaModel()
+        # Element 0 at –spacing/2 on x-axis
+        el0 = AntennaElement(
+            x1=-spacing / 2, y1=-half_len, z1=0.0,
+            x2=-spacing / 2, y2=half_len, z2=0.0,
+            segments=segs, radius=radius,
+        )
+        model.add_element(el0)
+        # Element 1 at +spacing/2 on x-axis
+        el1 = AntennaElement(
+            x1=spacing / 2, y1=-half_len, z1=0.0,
+            x2=spacing / 2, y2=half_len, z2=0.0,
+            segments=segs, radius=radius,
+        )
+        model.add_element(el1)
+
+        # Centre segment index
+        centre_seg = (segs + 1) // 2
+        model.add_feedpoint(0, centre_seg, voltage=1 + 0j)
+        model.add_feedpoint(1, centre_seg, voltage=-1 + 0j)
+
+        sim = AntennaSimulator()
+
+        # Azimuth cut at 30° elevation should be symmetric (az 0 vs 180)
+        az_pat = sim.simulate_azimuth_pattern(
+            model, freq_mhz, height_m=0.0, ground="free", el=30.0, az_step=5.0
+        )
+        gain_0 = next(p["gain"] for p in az_pat if abs(p["az"]) < 1e-6)
+        gain_180 = next(p["gain"] for p in az_pat if abs(p["az"] - 180.0) < 1e-6)
+        assert abs(gain_0 - gain_180) < 1e-3
+
+        # Elevation pattern (az=0 from simulator) should have deep null at 90°
+        el_res = sim.simulate_pattern(
+            model, freq_mhz, height_m=0.0, ground="free", el_step=5.0, az_step=360.0
+        )
+        # Locate entry closest to 90° elevation
+        zenith_gain = min(
+            (abs(p["el"] - 90.0), p["gain"]) for p in el_res["pattern"]
+        )[1]
+        # Expect at least 20 dB down relative to broadside lobe
+        assert zenith_gain < gain_0 - 20.0 

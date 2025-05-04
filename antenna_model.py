@@ -175,7 +175,40 @@ def _run_pymininec(
     cmd += model.to_pymininec_args(height_m=height_m)
     if ground_opts:
         cmd += ground_opts
-    cmd += ["--excitation-pulse", excitation_pulse]
+    # Handle feedpoints (excitation sources)
+    # If explicit feedpoints are present on the model, generate a matching pair of
+    #   --excitation-pulse=<pulse,tag>  and  --excitation-voltage=<real,imag>
+    #   for each feedpoint.  Otherwise, fall back to the legacy single
+    #   --excitation-pulse parameter.
+    if model.feedpoints:
+        for fp in model.feedpoints:
+            # Auto-assigned wire tags start at 1 in the order the elements were
+            # added, so tag = element_index + 1
+            tag = fp["element_index"] + 1
+            segment = fp["segment"]
+            # A wire with N segments contains N-1 pulses.  A pulse number of P
+            # refers to the junction between segment P and P+1, so feeding *in*
+            # segment *segment* means using pulse = segment-1.  This matches the
+            # convention used by the original MININEC CLI and the earlier hard-
+            # coded default ("10,1") that fed the centre segment of a 21-segment
+            # dipole.
+            pulse = max(segment - 1, 1)
+            v: complex = fp.get("voltage", 1 + 0j)
+            # Format complex voltage as "a+bj" or "a-bj" (omit imag part if zero)
+            if abs(v.imag) < 1e-12:
+                v_str = f"{v.real:g}"
+            else:
+                # Sign handled automatically by formatting imag with sign
+                imag_part = f"{v.imag:g}j"
+                # Ensure plus sign if imag positive
+                sign = '+' if v.imag >= 0 else ''
+                v_str = f"{v.real:g}{sign}{imag_part}"
+            cmd += ["--excitation-pulse", f"{pulse},{tag}"]
+            cmd += ["--excitation-voltage", v_str]
+    else:
+        # Backwards compatibility: default single feed at "excitation_pulse"
+        cmd += ["--excitation-pulse", excitation_pulse]
+    
     cmd += ["--option", option]
     if option == "far-field-absolute":
         cmd += ["--ff-distance", str(ff_distance)]
