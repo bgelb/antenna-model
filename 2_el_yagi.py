@@ -141,11 +141,13 @@ def main():
     # Determine column peaks
     fg_peaks = [max(col) for col in zip(*fg_matrix)]
     fb_peaks = [max(col) for col in zip(*fb_matrix)]
-    headers_sweep = ['Detune (%)'] + [f'{frac:.2f}λ' for frac in spacing_fracs]
+    headers_sweep = ['Detune (%)', 'Reflector Length (λ)'] + [f'{frac:.2f}λ' for frac in spacing_fracs]
     # Forward Gain vs Detune (%) and Spacing
     rows_fg = []
     for i, detune in enumerate(detunes):
-        row = [f'{detune*100:.2f}']
+        # Reflector length in wavelengths: 0.5 * (1 + detune)
+        refl_len_wl = 0.5 * (1 + detune)
+        row = [f'{detune*100:.2f}', f'{refl_len_wl:.3f}']
         for j, val in enumerate(fg_matrix[i]):
             if abs(val - fg_peaks[j]) < 1e-6:
                 row.append(f'**{val:.2f}**')
@@ -156,7 +158,9 @@ def main():
     # Front-to-Back Ratio vs Detune (%) and Spacing
     rows_fb = []
     for i, detune in enumerate(detunes):
-        row = [f'{detune*100:.2f}']
+        # Reflector length in wavelengths: 0.5 * (1 + detune)
+        refl_len_wl = 0.5 * (1 + detune)
+        row = [f'{detune*100:.2f}', f'{refl_len_wl:.3f}']
         for j, val in enumerate(fb_matrix[i]):
             if abs(val - fb_peaks[j]) < 1e-6:
                 row.append(f'**{val:.2f}**')
