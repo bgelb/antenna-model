@@ -470,6 +470,7 @@ def plot_polar_patterns(
     el_fixed: float,
     output_file: str,
     show_gui: bool = False,
+    legend_labels: list = None,
 ) -> None:
     """
     Generate elevation (az=0) and azimuth (el=el_fixed) polar plots for each height.
@@ -495,7 +496,8 @@ def plot_polar_patterns(
         data = sorted(elevation_patterns[h], key=lambda p: p['el'])
         theta = np.radians([p['el'] for p in data])
         r = [0.89 ** ((MG - p['gain']) / 2.0) for p in data]
-        ax_el.plot(theta, r, label=f"h={h}m", color=colors[idx % len(colors)])
+        label = legend_labels[idx] if legend_labels is not None else f"h={h}m"
+        ax_el.plot(theta, r, label=label, color=colors[idx % len(colors)])
     ax_el.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
     # Azimuth pattern with custom linear scaling
     raw_max_az = max(max(p['gain'] for p in azimuth_patterns[h]) for h in heights)
@@ -515,7 +517,8 @@ def plot_polar_patterns(
         data = sorted(azimuth_patterns[h], key=lambda p: p['az'])
         phi = np.radians([p['az'] for p in data])
         r = [0.89 ** ((MG_az - p['gain']) / 2.0) for p in data]
-        ax_az.plot(phi, r, label=f"h={h}m", color=colors[idx % len(colors)])
+        label = legend_labels[idx] if legend_labels is not None else f"h={h}m"
+        ax_az.plot(phi, r, label=label, color=colors[idx % len(colors)])
     ax_az.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
     plt.tight_layout()
     if show_gui:
