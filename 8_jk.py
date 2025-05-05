@@ -14,7 +14,6 @@ from antenna_model import (
     AntennaSimulator,
     feet_to_meters,
     build_dipole_model,
-    build_two_element_yagi_model,
     compute_impedance_vs_heights,
     compute_elevation_patterns,
     compute_azimuth_patterns,
@@ -23,6 +22,16 @@ from antenna_model import (
     Report,
     resonant_dipole_length,
 )
+import importlib.util
+
+# Dynamically import build_two_element_yagi_model from 2_el_yagi.py
+spec = importlib.util.spec_from_file_location(
+    "two_el_yagi",
+    os.path.join(os.path.dirname(__file__), "2_el_yagi.py")
+)
+two_el_yagi = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(two_el_yagi)
+build_two_element_yagi_model = two_el_yagi.build_two_element_yagi_model
 
 def main():
     parser = argparse.ArgumentParser(description="8JK antenna pattern analysis and plotting.")

@@ -22,6 +22,42 @@ from antenna_model import (
 from typing import Dict, List
 import os
 
+# Build a 2-element Yagi model: a driven dipole and a passive reflector.
+def build_two_element_yagi_model(
+    freq_mhz: float,
+    segments: int = 21,
+    radius: float = 0.001,
+    detune_frac: float = 0.05,
+    spacing_frac: float = 0.2,
+) -> AntennaModel:
+    """
+    Build a 2-element Yagi model: a driven dipole and a passive reflector.
+    detune_frac: fractional increase of reflector length (e.g. 0.05 for 5% longer).
+    spacing_frac: spacing between elements in wavelengths (e.g. 0.2 for 0.2λ).
+    """
+    c = 299792458.0
+    wavelength_m = c / (freq_mhz * 1e6)
+    spacing_m = spacing_frac * wavelength_m
+    half_driven = resonant_dipole_length(freq_mhz) / 2.0
+    passive_length = resonant_dipole_length(freq_mhz / (1.0 + detune_frac))
+    half_passive = passive_length / 2.0
+    model = AntennaModel()
+    el1 = AntennaElement(
+        x1=0.0, y1=-half_driven, z1=0.0,
+        x2=0.0, y2= half_driven, z2=0.0,
+        segments=segments, radius=radius,
+    )
+    model.add_element(el1)
+    center_seg = (segments + 1) // 2
+    model.add_feedpoint(element_index=0, segment=center_seg)
+    el2 = AntennaElement(
+        x1=-spacing_m, y1=-half_passive, z1=0.0,
+        x2=-spacing_m, y2= half_passive, z2=0.0,
+        segments=segments, radius=radius,
+    )
+    model.add_element(el2)
+    return model
+
 def main():
     parser = argparse.ArgumentParser(description="2-element Yagi pattern analysis and plotting.")
     parser.add_argument('--show-gui', action='store_true', help='Show plots interactively instead of saving')
@@ -36,35 +72,14 @@ def main():
     ground = 'average'
 
     # Build the Yagi model
-    model = AntennaModel()
-
-    # Driven element (half-wave dipole) at origin
-    half_len = driven_length / 2.0
-    driven = AntennaElement(
-        x1=0.0, y1=-half_len, z1=0.0,
-        x2=0.0, y2= half_len, z2=0.0,
-        segments=segments, radius=radius,
-    )
-    model.add_element(driven)
-    # Feedpoint at center segment of driven element
-    center_seg = (segments + 1) // 2
-    model.add_feedpoint(element_index=0, segment=center_seg)
-
-    # Passive reflector: 5% longer, spaced 0.2 λ along x-axis
+    # Use our build_two_element_yagi_model helper
     c = 299792458.0
     lambda_m = c / (freq_mhz * 1e6)
-    spacing = 0.2 * lambda_m
-    # Compute passive element length using resonant_dipole_length at 5% reduced frequency to get 5% longer length
-    passive_length = resonant_dipole_length(freq_mhz / 1.05)
-    half_pass = passive_length / 2.0
-    passive = AntennaElement(
-        x1=-spacing, y1=-half_pass, z1=0.0,
-        x2=-spacing, y2= half_pass, z2=0.0,
-        segments=segments, radius=radius,
-    )
-    model.add_element(passive)
-
+    model = build_two_element_yagi_model(freq_mhz, segments, radius)
+    driven = model.elements[0]
+    center_seg = (segments + 1) // 2
     sim = AntennaSimulator()
+
     # 1) Feedpoint impedance vs height
     heights = [5.0, 10.0, 15.0, 20.0]
     imp_list = compute_impedance_vs_heights(sim, model, freq_mhz, heights, ground)
