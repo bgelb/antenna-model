@@ -39,7 +39,7 @@ def main():
 
     # Initialize report
     report = Report('dipole_pattern')
-    report.add_table('Feedpoint Impedance vs Height', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list)
+    report.add_table('Feedpoint Impedance vs Height', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list, parameters="frequency = 14.1 MHz; dipole_length = resonant_dipole_length(14.1 MHz); segments = 21; radius = 0.001 m; ground = average; heights = [5, 10, 15, 20] m")
 
     # 2) Gain tables and pattern computation
     el_pats = compute_elevation_patterns(sim, model, freq_mhz, heights, ground)
@@ -70,7 +70,7 @@ def main():
             else:
                 fr.append('')
         formatted_rows.append(fr)
-    report.add_table('Gain at az=0 for Elevation 0–180°', headers, formatted_rows)
+    report.add_table('Gain at az=0 for Elevation 0–180°', headers, formatted_rows, parameters="frequency = 14.1 MHz; dipole_length = resonant_dipole_length(14.1 MHz); segments = 21; radius = 0.001 m; ground = average; heights = [5, 10, 15, 20] m; azimuth = 0°")
 
     # 3) Azimuth patterns at fixed elevation 30°
     el_fixed = 30.0
@@ -79,7 +79,7 @@ def main():
     # 4) Plot patterns
     output_file = os.path.join(report.report_dir, 'pattern_comparison_all_heights.png')
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
-    report.add_plot(f'Azimuth Pattern (el={int(el_fixed)}°)', output_file)
+    report.add_plot(f'Azimuth Pattern (el={int(el_fixed)}°)', output_file, parameters="frequency = 14.1 MHz; dipole_length = resonant_dipole_length(14.1 MHz); segments = 21; radius = 0.001 m; ground = average; heights = [5, 10, 15, 20] m; elevation = 30°")
     report.save()
 
 if __name__ == '__main__':

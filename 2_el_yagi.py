@@ -86,7 +86,7 @@ def main():
 
     # Create report
     report = Report('2_el_yagi')
-    report.add_table('Feedpoint Impedance vs Height', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list)
+    report.add_table('Feedpoint Impedance vs Height', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list, parameters="frequency = 14.1 MHz; detune = 5%; spacing = 0.20 λ; ground = average; segments = 21; radius = 0.001 m")
 
     # 2) Compute elevation patterns and build bolded gain table
     el_pats = compute_elevation_patterns(sim, model, freq_mhz, heights, ground)
@@ -114,7 +114,7 @@ def main():
             else:
                 fr.append('')
         formatted_rows.append(fr)
-    report.add_table('Gain at az=0 for Elevation 0–180°', headers, formatted_rows)
+    report.add_table('Gain at az=0 for Elevation 0–180°', headers, formatted_rows, parameters="frequency = 14.1 MHz; detune = 5%; spacing = 0.20 λ; ground = average; segments = 21; radius = 0.001 m; azimuth = 0°; heights = [5.0, 10.0, 15.0, 20.0] m")
 
     # 3) Compute azimuth patterns at fixed elevation and plot
     el_fixed = 30.0
@@ -169,7 +169,7 @@ def main():
             else:
                 row.append(f'{val:.2f}')
         rows_fg.append(row)
-    report.add_table('Forward Gain vs Detune (%) and Spacing', headers_sweep, rows_fg)
+    report.add_table('Forward Gain vs Detune (%) and Spacing', headers_sweep, rows_fg, parameters="frequency = 14.1 MHz; detune steps = 0%–10% in 1% increments; spacing fractions = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40] λ; ground = average; segments = 21; radius = 0.001 m; height = 10.0 m; elevation = 30°")
     # Front-to-Back Ratio vs Detune (%) and Spacing
     rows_fb = []
     for i, detune in enumerate(detunes):
@@ -182,12 +182,12 @@ def main():
             else:
                 row.append(f'{val:.2f}')
         rows_fb.append(row)
-    report.add_table('Front-to-Back Ratio vs Detune (%) and Spacing', headers_sweep, rows_fb)
+    report.add_table('Front-to-Back Ratio vs Detune (%) and Spacing', headers_sweep, rows_fb, parameters="frequency = 14.1 MHz; detune steps = 0%–10% in 1% increments; spacing fractions = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40] λ; ground = average; segments = 21; radius = 0.001 m; height = 10.0 m; elevation = 30°")
 
     # 6) Plot patterns (main az/el plot FIRST in report)
     output_file = os.path.join(report.report_dir, '2_el_yagi_pattern.png')
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
-    report.add_plot('Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)', output_file)
+    report.add_plot('Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)', output_file, parameters="frequency = 14.1 MHz; detune = 6%; spacing = 0.30 λ; ground = average; segments = 21; radius = 0.001 m; heights = [5.0, 10.0, 15.0, 20.0] m; elevation = 30°")
 
     # 6a) Comparison plot: Yagi vs Dipole at h=10m, detune=6%, spacing=0.3λ
     # Build Yagi model at detune=6%, spacing=0.3λ
@@ -220,7 +220,7 @@ def main():
     cmp_labels = ["Yagi (detune=6%, spacing=0.30λ)", "Dipole"]
     cmp_plot = os.path.join(report.report_dir, 'yagi_vs_dipole.png')
     plot_polar_patterns(cmp_elev_pats, cmp_az_pats, list(cmp_elev_pats.keys()), el_fixed, cmp_plot, args.show_gui, legend_labels=cmp_labels)
-    report.add_plot('Yagi vs Dipole Comparison (h=10m, detune=6%, spacing=0.30λ)', cmp_plot)
+    report.add_plot('Yagi vs Dipole Comparison (h=10m, detune=6%, spacing=0.30λ)', cmp_plot, parameters="frequency = 14.1 MHz; height = 10.0 m; detune = 6%; spacing = 0.30 λ; ground = average; segments = 21; radius = 0.001 m")
 
     # 7) Spacing-sweep polar patterns at 6% detune, height 10m
     detune_fixed = 0.06
@@ -252,7 +252,7 @@ def main():
     sweep_plot = os.path.join(report.report_dir, 'spacing_sweep.png')
     spacing_labels = [f"d={frac:.2f}λ" for frac in spacing_fracs]
     plot_polar_patterns(spacing_elev_pats, spacing_az_pats, spacing_fracs, el_fixed, sweep_plot, args.show_gui, legend_labels=spacing_labels)
-    report.add_plot('Spacing-Sweep Polar Patterns (h=10m, detune=6%)', sweep_plot)
+    report.add_plot('Spacing-Sweep Polar Patterns (h=10m, detune=6%)', sweep_plot, parameters="frequency = 14.1 MHz; height = 10.0 m; detune = 6%; spacing fractions = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40] λ; ground = average; segments = 21; radius = 0.001 m; elevation = 30°")
 
     # 8) Detune-sweep polar patterns at spacing=0.3λ, height 10m
     spacing_fixed = 0.30
@@ -280,7 +280,7 @@ def main():
     detune_plot = os.path.join(report.report_dir, 'detune_sweep.png')
     detune_labels = [f"{int(round(d*100))}%" for d in detune_steps]
     plot_polar_patterns(detune_elev_pats, detune_az_pats, detune_steps, el_fixed, detune_plot, args.show_gui, legend_labels=detune_labels)
-    report.add_plot('Detune-Sweep Polar Patterns (h=10m, spacing=0.30λ)', detune_plot)
+    report.add_plot('Detune-Sweep Polar Patterns (h=10m, spacing=0.30λ)', detune_plot, parameters="frequency = 14.1 MHz; height = 10.0 m; spacing = 0.30 λ; detune steps = [0.00, 0.02, 0.04, 0.06, 0.08, 0.10]; ground = average; segments = 21; radius = 0.001 m; elevation = 30°")
 
     report.save()
 

@@ -2,6 +2,8 @@
 
 ## Feedpoint Impedance vs Height
 
+Parameters: frequency = 14.1 MHz; detune = 5%; spacing = 0.20 λ; ground = average; segments = 21; radius = 0.001 m
+
 | Height (m) | R (Ω) | X (Ω) |
 | --- | --- | --- |
 | 5.0 | 43.38598 | 17.17851 |
@@ -10,6 +12,8 @@
 | 20.0 | 63.66394 | 2.700497 |
 
 ## Gain at az=0 for Elevation 0–180°
+
+Parameters: frequency = 14.1 MHz; detune = 5%; spacing = 0.20 λ; ground = average; segments = 21; radius = 0.001 m; azimuth = 0°; heights = [5.0, 10.0, 15.0, 20.0] m
 
 | Elevation (deg) | 5.0 m | 10.0 m | 15.0 m | 20.0 m |
 | --- | --- | --- | --- | --- |
@@ -53,6 +57,8 @@
 
 ## Forward Gain vs Detune (%) and Spacing
 
+Parameters: frequency = 14.1 MHz; detune steps = 0%–10% in 1% increments; spacing fractions = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40] λ; ground = average; segments = 21; radius = 0.001 m; height = 10.0 m; elevation = 30°
+
 | Detune (%) | Reflector Length (λ) | 0.10λ | 0.15λ | 0.20λ | 0.25λ | 0.30λ | 0.35λ | 0.40λ |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0.00 | 0.500 | 0.52 | 6.86 | 9.16 | 9.90 | 10.07 | 9.95 | 9.63 |
@@ -68,6 +74,8 @@
 | 10.00 | 0.550 | 9.42 | 9.61 | 9.57 | 9.36 | 8.95 | 8.32 | 7.38 |
 
 ## Front-to-Back Ratio vs Detune (%) and Spacing
+
+Parameters: frequency = 14.1 MHz; detune steps = 0%–10% in 1% increments; spacing fractions = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40] λ; ground = average; segments = 21; radius = 0.001 m; height = 10.0 m; elevation = 30°
 
 | Detune (%) | Reflector Length (λ) | 0.10λ | 0.15λ | 0.20λ | 0.25λ | 0.30λ | 0.35λ | 0.40λ |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -85,16 +93,24 @@
 
 ## Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)
 
+Parameters: frequency = 14.1 MHz; detune = 6%; spacing = 0.30 λ; ground = average; segments = 21; radius = 0.001 m; heights = [5.0, 10.0, 15.0, 20.0] m; elevation = 30°
+
 ![Azimuth and Elevation Plot (detune=6%, spacing=0.30λ)](2_el_yagi_pattern.png)
 
 ## Yagi vs Dipole Comparison (h=10m, detune=6%, spacing=0.30λ)
+
+Parameters: frequency = 14.1 MHz; height = 10.0 m; detune = 6%; spacing = 0.30 λ; ground = average; segments = 21; radius = 0.001 m
 
 ![Yagi vs Dipole Comparison (h=10m, detune=6%, spacing=0.30λ)](yagi_vs_dipole.png)
 
 ## Spacing-Sweep Polar Patterns (h=10m, detune=6%)
 
+Parameters: frequency = 14.1 MHz; height = 10.0 m; detune = 6%; spacing fractions = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40] λ; ground = average; segments = 21; radius = 0.001 m; elevation = 30°
+
 ![Spacing-Sweep Polar Patterns (h=10m, detune=6%)](spacing_sweep.png)
 
 ## Detune-Sweep Polar Patterns (h=10m, spacing=0.30λ)
+
+Parameters: frequency = 14.1 MHz; height = 10.0 m; spacing = 0.30 λ; detune steps = [0.00, 0.02, 0.04, 0.06, 0.08, 0.10]; ground = average; segments = 21; radius = 0.001 m; elevation = 30°
 
 ![Detune-Sweep Polar Patterns (h=10m, spacing=0.30λ)](detune_sweep.png)

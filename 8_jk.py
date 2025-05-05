@@ -101,10 +101,10 @@ def main():
     # 1) Feedpoint Impedance vs Height (44' elements)
     imp_list = compute_impedance_vs_heights(sim, model, freq_mhz, heights, ground)
     report = Report('8_jk')
-    report.add_table("Feedpoint Impedance vs Height (8JK - 44')", ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list)
+    report.add_table("Feedpoint Impedance vs Height (8JK - 44')", ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list, parameters="frequency = 14.1 MHz; element_length = 44 ft; spacing = 6.0 m; phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m")
     # 1a) Feedpoint Impedance vs Height (8JK - 0.5 wl)
     imp_list_hw = compute_impedance_vs_heights(sim, model_half, freq_mhz, heights, ground)
-    report.add_table('Feedpoint Impedance vs Height (8JK - 0.5 wl)', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list_hw)
+    report.add_table('Feedpoint Impedance vs Height (8JK - 0.5 wl)', ['Height (m)', 'R (Ω)', 'X (Ω)'], imp_list_hw, parameters="frequency = 14.1 MHz; element_length = 0.5 λ; spacing = 6.0 m; phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m")
 
     # 2) Elevation patterns and gain table (44' elements)
     el_pats = compute_elevation_patterns(sim, model, freq_mhz, heights, ground)
@@ -130,7 +130,7 @@ def main():
             else:
                 fr.append('')
         formatted_rows.append(fr)
-    report.add_table('Gain at az=0 for Elevation 0–180° (8JK - 44\')', headers, formatted_rows)
+    report.add_table('Gain at az=0 for Elevation 0–180° (8JK - 44\')', headers, formatted_rows, parameters="frequency = 14.1 MHz; element_length = 44 ft; spacing = 6.0 m; phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m; azimuth = 0°")
     # 2a) Elevation patterns and gain table (8JK - 0.5 wl)
     el_pats_hw = compute_elevation_patterns(sim, model_half, freq_mhz, heights, ground)
     rows_hw = []
@@ -153,7 +153,7 @@ def main():
             else:
                 fr.append('')
         formatted_hw.append(fr)
-    report.add_table('Gain at az=0 for Elevation 0–180° (8JK - 0.5 wl)', headers, formatted_hw)
+    report.add_table('Gain at az=0 for Elevation 0–180° (8JK - 0.5 wl)', headers, formatted_hw, parameters="frequency = 14.1 MHz; element_length = 0.5 λ; spacing = 6.0 m; phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m; azimuth = 0°")
 
     # 3) Azimuth patterns at fixed elevation
     el_fixed = 30.0
@@ -162,13 +162,13 @@ def main():
     # 4) Polar patterns plot (44' elements)
     output_file = os.path.join(report.report_dir, '8_jk_pattern.png')
     plot_polar_patterns(el_pats, az_pats, heights, el_fixed, output_file, args.show_gui)
-    report.add_plot('Azimuth and Elevation Patterns (8JK - 44\')', output_file)
+    report.add_plot('Azimuth and Elevation Patterns (8JK - 44\')', output_file, parameters="frequency = 14.1 MHz; element_length = 44 ft; spacing = 6.0 m; phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m; elevation = 30°")
     # 4a) Polar patterns plot for half-wave model
     el_pats_hw = el_pats_hw
     az_pats_hw = compute_azimuth_patterns(sim, model_half, freq_mhz, heights, ground, el=el_fixed)
     output_hw = os.path.join(report.report_dir, '8_jk_pattern_05wl.png')
     plot_polar_patterns(el_pats_hw, az_pats_hw, heights, el_fixed, output_hw, args.show_gui)
-    report.add_plot('Azimuth and Elevation Patterns (8JK - 0.5 wl)', output_hw)
+    report.add_plot('Azimuth and Elevation Patterns (8JK - 0.5 wl)', output_hw, parameters="frequency = 14.1 MHz; element_length = 0.5 λ; spacing = 6.0 m; phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m; elevation = 30°")
 
     # 5) Comparison with dipole and Yagi at h=10m
     cmp_height = 10.0
@@ -237,7 +237,7 @@ def main():
         plt.show()
     else:
         plt.savefig(output_comb)
-    report.add_plot("8JK vs Dipole vs Yagi Comparison", output_comb)
+    report.add_plot("8JK vs Dipole vs Yagi Comparison", output_comb, parameters="frequency = 14.1 MHz; height = 10.0 m; elevation = 30°; models = [8JK-44' (spacing=6.0 m, phasing=180°), 8JK-0.5λ (spacing=6.0 m, phasing=180°), Dipole-0.5λ, Yagi (detune=6%, spacing=0.30λ)]; segments = 21; radius = 0.001 m; ground = average")
 
     # 6) Forward gain table at elevation 15°–35° in 5° steps
     fwd_els = list(range(15, 36, 5))
@@ -249,7 +249,7 @@ def main():
             row.append(f"{gain:.3f}")
         fwd_rows.append(row)
     fwd_headers = ["Elevation (deg)", "8JK - 44'", "8JK - 0.5 wl", "Dipole - 0.5 wl", "Yagi (6%,0.3 wl)"]
-    report.add_table("Forward Gain vs Elevation (15°–35°)", fwd_headers, fwd_rows)
+    report.add_table("Forward Gain vs Elevation (15°–35°)", fwd_headers, fwd_rows, parameters="frequency = 14.1 MHz; elevation_range = 15°–35°; heights = [5.0, 10.0, 15.0, 20.0] m; models = [8JK-44' (spacing=6.0 m, phasing=180°), 8JK-0.5λ (spacing=6.0 m, phasing=180°), Dipole-0.5λ, Yagi (detune=6%, spacing=0.30λ)]; segments = 21; radius = 0.001 m; ground = average")
 
     report.save()
 

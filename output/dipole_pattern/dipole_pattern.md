@@ -2,6 +2,8 @@
 
 ## Feedpoint Impedance vs Height
 
+Parameters: frequency = 14.1 MHz; dipole_length = resonant_dipole_length(14.1 MHz); segments = 21; radius = 0.001 m; ground = average; heights = [5, 10, 15, 20] m
+
 | Height (m) | R (Ω) | X (Ω) |
 | --- | --- | --- |
 | 5 | 76.65365 | -1.819609 |
@@ -10,6 +12,8 @@
 | 20 | 72.25543 | -39.95716 |
 
 ## Gain at az=0 for Elevation 0–180°
+
+Parameters: frequency = 14.1 MHz; dipole_length = resonant_dipole_length(14.1 MHz); segments = 21; radius = 0.001 m; ground = average; heights = [5, 10, 15, 20] m; azimuth = 0°
 
 | Elevation (deg) | 5.0 m | 10.0 m | 15.0 m | 20.0 m |
 | --- | --- | --- | --- | --- |
@@ -52,5 +56,7 @@
 | 180 | -999.000 | -999.000 | -999.000 | -999.000 |
 
 ## Azimuth Pattern (el=30°)
+
+Parameters: frequency = 14.1 MHz; dipole_length = resonant_dipole_length(14.1 MHz); segments = 21; radius = 0.001 m; ground = average; heights = [5, 10, 15, 20] m; elevation = 30°
 
 ![Azimuth Pattern (el=30°)](pattern_comparison_all_heights.png)

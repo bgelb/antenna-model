@@ -585,10 +585,13 @@ class Report:
         os.makedirs(self.report_dir, exist_ok=True)
         self.lines = [f"# Report for {self.name}", ""]
 
-    def add_table(self, title: str, headers: list, rows: list):
+    def add_table(self, title: str, headers: list, rows: list, parameters: str = None):
         # Add a markdown table section
         self.lines.append(f"## {title}")
         self.lines.append("")
+        if parameters:
+            self.lines.append(f"Parameters: {parameters}")
+            self.lines.append("")
         # Header row
         header_row = "| " + " | ".join(headers) + " |"
         self.lines.append(header_row)
@@ -602,10 +605,13 @@ class Report:
             self.lines.append("| " + " | ".join(items) + " |")
         self.lines.append("")
 
-    def add_plot(self, title: str, image_path: str):
+    def add_plot(self, title: str, image_path: str, parameters: str = None):
         # Section header for plot
         self.lines.append(f"## {title}")
         self.lines.append("")
+        if parameters:
+            self.lines.append(f"Parameters: {parameters}")
+            self.lines.append("")
         # Embed image (assume already in report dir)
         self.lines.append(f"![{title}]({os.path.basename(image_path)})")
         self.lines.append("")
