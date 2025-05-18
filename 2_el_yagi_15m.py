@@ -478,6 +478,51 @@ def main():
             parameters=f'spacing = {frac:.3f}λ; detune = {det*100:.2f}%'
         )
 
+    # === VSWR vs Frequency for each spacing fraction ===
+    # Determine best detune for max F/B across *all* spacing_fracs
+    best_detune_spacing = {}
+    for j, frac in enumerate(spacing_fracs):
+        peak_fb = fb_peaks[j]
+        i_row = next(i for i, row in enumerate(fb_matrix) if abs(row[j] - peak_fb) < 1e-6)
+        best_detune_spacing[frac] = detune_steps[i_row]
+
+    # Frequency sweep offsets (kHz) and list in MHz
+    vswr_offsets_khz = np.arange(-300, 301, 25)  # -300 to +300 kHz in 25 kHz steps
+    vswr_freqs_mhz = FREQ_MHZ + vswr_offsets_khz / 1e3
+
+    vswr_plot_path = os.path.join('output/2_el_yagi_15m', 'vswr_vs_freq.png')
+    plt.figure(figsize=(10, 6))
+    for frac in spacing_fracs:
+        det = best_detune_spacing[frac]
+        spacing_m = frac * wavelength_m
+        vswr_values = []
+        for f_mhz in vswr_freqs_mhz:
+            model = build_two_element_yagi_model(f_mhz, det, spacing_m)
+            # Fast impedance-only run via simulate_pattern (coarse)
+            imp_res = sim.simulate_pattern(
+                model, f_mhz, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
+            )['impedance']
+            if imp_res is None:
+                vswr_values.append(np.nan)
+                continue
+            R, X = imp_res
+            Z = complex(R, X)
+            Z0 = 50.0
+            gamma = (Z - Z0) / (Z + Z0)
+            vswr = (1 + abs(gamma)) / (1 - abs(gamma)) if abs(gamma) < 1 else (1 + abs(gamma)) / (abs(gamma) - 1)
+            vswr_values.append(vswr)
+        plt.plot(vswr_freqs_mhz, vswr_values, label=f"{frac:.3f}λ")
+    plt.xlabel('Frequency (MHz)')
+    plt.ylabel('VSWR (50 Ω)')
+    plt.title('VSWR vs Frequency for Reflector-Tuned 2-el Yagi (15 m)')
+    plt.ylim(1, 5)
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(vswr_plot_path)
+    report.add_plot('VSWR vs Frequency (All Spacings)', vswr_plot_path, parameters='Spacing fractions = 0.05-0.40 λ; reflector detune set for max F/B at 21 MHz; height = 0.5 λ; 50 Ω reference')
+    plt.close()
+
     # Save report
     report.save()
 
