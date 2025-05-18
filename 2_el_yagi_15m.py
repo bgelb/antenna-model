@@ -224,32 +224,113 @@ def main():
         parameters=f"frequency = {FREQ_MHZ} MHz; detune steps = 0%–10% in 1% increments; spacing fractions = {spacing_fracs} λ; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; height = {HEIGHT_M:.1f} m (~0.5λ); elevation = 30°"
     )
 
+    # === Polar pattern comparison for spacing subset (0.05–0.20 λ) ===
+    spacing_subset = [f for f in spacing_fracs if 0.05 <= f <= 0.20]
+    idx_subset = [spacing_fracs.index(f) for f in spacing_subset]
+    # Lists to track optimal detunes
+    detune_gain_list = []
+    detune_fb_list = []
+
+    spacing_elev_gain = {}
+    spacing_az_gain = {}
+    spacing_elev_fb = {}
+    spacing_az_fb = {}
+
+    for j_idx, frac in zip(idx_subset, spacing_subset):
+        # Determine detune for max gain and max F/B
+        best_gain = fg_peaks[j_idx]
+        i_detune_gain = next(i for i, val in enumerate(fg_matrix) if abs(val[j_idx] - best_gain) < 1e-6)
+        detune_gain = detune_steps[i_detune_gain]
+        detune_gain_list.append(detune_gain)
+
+        best_fb = fb_peaks[j_idx]
+        i_detune_fb = next(i for i, val in enumerate(fb_matrix) if abs(val[j_idx] - best_fb) < 1e-6)
+        detune_fb = detune_steps[i_detune_fb]
+        detune_fb_list.append(detune_fb)
+
+        # Build model for best gain
+        passive_len_gain = resonant_dipole_length(FREQ_MHZ / (1.0 + detune_gain))
+        half_passive_gain = passive_len_gain / 2.0
+        # Build model for best F/B
+        passive_len_fb = resonant_dipole_length(FREQ_MHZ / (1.0 + detune_fb))
+        half_passive_fb = passive_len_fb / 2.0
+
+        spacing_m = frac * wavelength_m
+
+        # ---- Best gain model ----
+        model = AntennaModel()
+        model.add_element(driven_elem)
+        model.add_feedpoint(element_index=0, segment=center_seg)
+        ref = AntennaElement(
+            x1=-spacing_m, y1=-half_passive_gain, z1=0.0,
+            x2=-spacing_m, y2=half_passive_gain, z2=0.0,
+            segments=SEGMENTS, radius=RADIUS,
+        )
+        model.add_element(ref)
+
+        elev_pat_res = sim.simulate_pattern(model, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0)
+        spacing_elev_gain[frac] = elev_pat_res['pattern']
+
+        az_pat_res = sim.simulate_azimuth_pattern(model, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+        spacing_az_gain[frac] = az_pat_res
+
+        # ---- Best F/B model ----
+        model_fb = AntennaModel()
+        model_fb.add_element(driven_elem)
+        model_fb.add_feedpoint(element_index=0, segment=center_seg)
+        ref_fb = AntennaElement(
+            x1=-spacing_m, y1=-half_passive_fb, z1=0.0,
+            x2=-spacing_m, y2=half_passive_fb, z2=0.0,
+            segments=SEGMENTS, radius=RADIUS,
+        )
+        model_fb.add_element(ref_fb)
+
+        elev_fb = sim.simulate_pattern(model_fb, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0)
+        spacing_elev_fb[frac] = elev_fb['pattern']
+
+        az_fb = sim.simulate_azimuth_pattern(model_fb, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+        spacing_az_fb[frac] = az_fb
+
+    # Legend labels include optimal detune percentage
+    labels_gain = [f"{frac:.3f}λ ({dg*100:.0f}%)" for frac, dg in zip(spacing_subset, detune_gain_list)]
+    labels_fb = [f"{frac:.3f}λ ({df*100:.0f}%)" for frac, df in zip(spacing_subset, detune_fb_list)]
+
+    polar_gain_plot = os.path.join('output/2_el_yagi_15m', 'spacing_subset_polar_gain.png')
+    plot_polar_patterns(spacing_elev_gain, spacing_az_gain, spacing_subset, 30.0, polar_gain_plot, args.show_gui, legend_labels=labels_gain)
+    report.add_plot('Polar Patterns (Max Gain per Spacing)', polar_gain_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.1f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation cut = 30°")
+
+    polar_fb_plot = os.path.join('output/2_el_yagi_15m', 'spacing_subset_polar_fb.png')
+    plot_polar_patterns(spacing_elev_fb, spacing_az_fb, spacing_subset, 30.0, polar_fb_plot, args.show_gui, legend_labels=labels_fb)
+    report.add_plot('Polar Patterns (Max F/B per Spacing)', polar_fb_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.1f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation cut = 30°")
+
     # Plot: Gain and F/B vs Detune for each boom length
     plt.figure(figsize=(10,6))
-    for r in results:
-        plt.plot(detune_fracs*100, r['gain_vs_detune'], label=f"{int(r['boom_ft'])} ft Gain")
+    for j, frac in enumerate(spacing_fracs):
+        gains_curve = [fg_matrix[i][j] for i in range(len(detune_steps))]
+        plt.plot(detune_steps*100, gains_curve, label=f"{frac:.3f}λ")
     plt.xlabel('Reflector Detune (%)')
     plt.ylabel('Forward Gain (dBi)')
-    plt.title('Forward Gain vs Detune for Each Boom Length (15m Yagi)')
-    plt.legend()
+    plt.title('Forward Gain vs Detune for Each Spacing Fraction (15m Yagi)')
+    plt.legend(ncol=2)
     plt.grid(True)
     gain_detune_plot = os.path.join('output/2_el_yagi_15m', 'gain_vs_detune.png')
     os.makedirs('output/2_el_yagi_15m', exist_ok=True)
     plt.savefig(gain_detune_plot)
-    report.add_plot('Forward Gain vs Detune for Each Boom Length', gain_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
+    report.add_plot('Forward Gain vs Detune for Each Spacing Fraction', gain_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
     plt.close()
 
     plt.figure(figsize=(10,6))
-    for r in results:
-        plt.plot(detune_fracs*100, r['fb_vs_detune'], label=f"{int(r['boom_ft'])} ft F/B")
+    for j, frac in enumerate(spacing_fracs):
+        fb_curve = [fb_matrix[i][j] for i in range(len(detune_steps))]
+        plt.plot(detune_steps*100, fb_curve, label=f"{frac:.3f}λ")
     plt.xlabel('Reflector Detune (%)')
     plt.ylabel('Front-to-Back Ratio (dB)')
-    plt.title('F/B Ratio vs Detune for Each Boom Length (15m Yagi)')
-    plt.legend()
+    plt.title('F/B Ratio vs Detune for Each Spacing Fraction (15m Yagi)')
+    plt.legend(ncol=2)
     plt.grid(True)
     fb_detune_plot = os.path.join('output/2_el_yagi_15m', 'fb_vs_detune.png')
     plt.savefig(fb_detune_plot)
-    report.add_plot('Front-to-Back Ratio vs Detune for Each Boom Length', fb_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
+    report.add_plot('Front-to-Back Ratio vs Detune for Each Spacing Fraction', fb_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
     plt.close()
 
     # Plot: Max Gain and F/B vs Boom Length

@@ -52,17 +52,29 @@ Parameters: frequency = 21.0 MHz; detune steps = 0%–10% in 1% increments; spac
 | 9.00 | 0.545 | 5.25 | 6.72 | 7.80 | 9.19 | 9.87 | 10.00 | 9.60 | 8.67 | 7.11 |
 | 10.00 | 0.550 | 4.53 | 5.85 | 6.84 | 8.14 | 8.76 | 8.85 | 8.43 | 7.48 | 5.93 |
 
-## Forward Gain vs Detune for Each Boom Length
+## Polar Patterns (Max Gain per Spacing)
+
+Parameters: frequency = 21.0 MHz; height = 7.1 m (~0.5λ); ground = average; segments = 21; radius = 0.001 m; elevation cut = 30°
+
+![Polar Patterns (Max Gain per Spacing)](spacing_subset_polar_gain.png)
+
+## Polar Patterns (Max F/B per Spacing)
+
+Parameters: frequency = 21.0 MHz; height = 7.1 m (~0.5λ); ground = average; segments = 21; radius = 0.001 m; elevation cut = 30°
+
+![Polar Patterns (Max F/B per Spacing)](spacing_subset_polar_fb.png)
+
+## Forward Gain vs Detune for Each Spacing Fraction
 
 Parameters: frequency = 21.0 MHz; height = 7.14 m (~0.5λ); ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
-![Forward Gain vs Detune for Each Boom Length](gain_vs_detune.png)
+![Forward Gain vs Detune for Each Spacing Fraction](gain_vs_detune.png)
 
-## Front-to-Back Ratio vs Detune for Each Boom Length
+## Front-to-Back Ratio vs Detune for Each Spacing Fraction
 
 Parameters: frequency = 21.0 MHz; height = 7.14 m (~0.5λ); ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
-![Front-to-Back Ratio vs Detune for Each Boom Length](fb_vs_detune.png)
+![Front-to-Back Ratio vs Detune for Each Spacing Fraction](fb_vs_detune.png)
 
 ## Max Gain and F/B vs Boom Length
 
