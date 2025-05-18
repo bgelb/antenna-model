@@ -13,6 +13,7 @@ from antenna_model import (
     AntennaElement,
     AntennaSimulator,
     resonant_dipole_length,
+    build_dipole_model,
     compute_elevation_patterns,
     compute_azimuth_patterns,
     plot_polar_patterns,
@@ -224,6 +225,22 @@ def main():
         parameters=f"frequency = {FREQ_MHZ} MHz; detune steps = 0%–10% in 1% increments; spacing fractions = {spacing_fracs} λ; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; height = {HEIGHT_M:.1f} m (~0.5λ); elevation = 30°"
     )
 
+    # --- Half-wave dipole reference at same height/elevation ---
+    dipole_length = resonant_dipole_length(FREQ_MHZ)
+    dipole_model = build_dipole_model(total_length=dipole_length, segments=SEGMENTS, radius=RADIUS)
+    dip_az = sim.simulate_azimuth_pattern(dipole_model, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+    dip_fwd_gain = next(p['gain'] for p in dip_az if abs(p['az']) < 1e-6)
+    dip_back_gain = next(p['gain'] for p in dip_az if abs(p['az'] - 180.0) < 1e-6)
+    dip_fb = dip_fwd_gain - dip_back_gain
+
+    # --- Half-wave dipole reference table ---
+    report.add_table(
+        'Half-wave Dipole Reference',
+        ['Gain (dBi)', 'F/B (dB)'],
+        [[f"{dip_fwd_gain:.2f}", f"{dip_fb:.2f}"]],
+        parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30°"
+    )
+
     # === Polar pattern comparison for spacing subset (0.05–0.20 λ) ===
     spacing_subset = [f for f in spacing_fracs if 0.05 <= f <= 0.20]
     idx_subset = [spacing_fracs.index(f) for f in spacing_subset]
@@ -308,6 +325,8 @@ def main():
     for j, frac in enumerate(spacing_fracs):
         gains_curve = [fg_matrix[i][j] for i in range(len(detune_steps))]
         plt.plot(detune_steps*100, gains_curve, label=f"{frac:.3f}λ")
+    # Dipole reference line
+    plt.axhline(dip_fwd_gain, color='k', linestyle='--', label='Dipole')
     plt.xlabel('Reflector Detune (%)')
     plt.ylabel('Forward Gain (dBi)')
     plt.title('Forward Gain vs Detune for Each Spacing Fraction (15m Yagi)')
@@ -323,6 +342,8 @@ def main():
     for j, frac in enumerate(spacing_fracs):
         fb_curve = [fb_matrix[i][j] for i in range(len(detune_steps))]
         plt.plot(detune_steps*100, fb_curve, label=f"{frac:.3f}λ")
+    # Dipole reference F/B = 0 dB
+    plt.axhline(dip_fb, color='k', linestyle='--', label='Dipole')
     plt.xlabel('Reflector Detune (%)')
     plt.ylabel('Front-to-Back Ratio (dB)')
     plt.title('F/B Ratio vs Detune for Each Spacing Fraction (15m Yagi)')
