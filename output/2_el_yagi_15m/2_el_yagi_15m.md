@@ -83,3 +83,83 @@ Parameters: frequency = 21.0 MHz; height = 7.14 m (~0.5λ); ground = average; se
 Parameters: frequency = 21.0 MHz; height = 7.14 m (~0.5λ); ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 ![Front-to-Back Ratio vs Detune for Each Spacing Fraction](fb_vs_detune.png)
+
+## Criticality Polar Patterns (0.050λ)
+
+Parameters: frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = 0.050λ
+
+![Criticality Polar Patterns (0.050λ)](criticality_50pl.png)
+
+## Criticality Data (0.050λ)
+
+Parameters: spacing = 0.050λ; detune = 5.00%
+
+| Offset (kHz) | Forward Gain (dBi) | F/B (dB) |
+| --- | --- | --- |
+| -100 | 11.06 | 17.36 |
+| -50 | 11.06 | 17.30 |
+| -25 | 11.07 | 17.27 |
+| 0 | 11.07 | 17.24 |
+| 25 | 11.07 | 17.21 |
+| 50 | 11.08 | 17.18 |
+| 100 | 11.08 | 17.11 |
+
+## Criticality Polar Patterns (0.075λ)
+
+Parameters: frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = 0.075λ
+
+![Criticality Polar Patterns (0.075λ)](criticality_75pl.png)
+
+## Criticality Data (0.075λ)
+
+Parameters: spacing = 0.075λ; detune = 5.00%
+
+| Offset (kHz) | Forward Gain (dBi) | F/B (dB) |
+| --- | --- | --- |
+| -100 | 11.08 | 17.17 |
+| -50 | 11.08 | 17.13 |
+| -25 | 11.09 | 17.11 |
+| 0 | 11.09 | 17.10 |
+| 25 | 11.09 | 17.07 |
+| 50 | 11.09 | 17.05 |
+| 100 | 11.10 | 17.01 |
+
+## Criticality Polar Patterns (0.100λ)
+
+Parameters: frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = 0.100λ
+
+![Criticality Polar Patterns (0.100λ)](criticality_100pl.png)
+
+## Criticality Data (0.100λ)
+
+Parameters: spacing = 0.100λ; detune = 5.00%
+
+| Offset (kHz) | Forward Gain (dBi) | F/B (dB) |
+| --- | --- | --- |
+| -100 | 11.06 | 17.17 |
+| -50 | 11.06 | 17.14 |
+| -25 | 11.07 | 17.13 |
+| 0 | 11.07 | 17.11 |
+| 25 | 11.07 | 17.10 |
+| 50 | 11.07 | 17.08 |
+| 100 | 11.08 | 17.05 |
+
+## Criticality Polar Patterns (0.150λ)
+
+Parameters: frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = 0.150λ
+
+![Criticality Polar Patterns (0.150λ)](criticality_150pl.png)
+
+## Criticality Data (0.150λ)
+
+Parameters: spacing = 0.150λ; detune = 5.00%
+
+| Offset (kHz) | Forward Gain (dBi) | F/B (dB) |
+| --- | --- | --- |
+| -100 | 10.97 | 17.24 |
+| -50 | 10.97 | 17.23 |
+| -25 | 10.98 | 17.23 |
+| 0 | 10.98 | 17.22 |
+| 25 | 10.98 | 17.21 |
+| 50 | 10.98 | 17.20 |
+| 100 | 10.99 | 17.18 |
