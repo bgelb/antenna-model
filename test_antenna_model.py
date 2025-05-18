@@ -10,6 +10,10 @@ from antenna_model import (
     AntennaElement,
 )
 import re
+import os
+import filecmp
+import shutil
+import subprocess
 
 def test_resonant_dipole_length():
     f = 14.1
@@ -157,3 +161,46 @@ class TestAntennaModel:
         )[1]
         # Expect at least 20 dB down relative to broadside lobe
         assert zenith_gain < gain_0 - 20.0 
+
+def run_antenna_script(script_name):
+    """Run an antenna script as a subprocess."""
+    subprocess.run(["python", script_name], check=True)
+
+@pytest.mark.skipif(not os.path.exists("golden_output"), reason="golden_output directory missing")
+def test_output_regression():
+    """
+    For each antenna program, check that all expected output files are generated, match exactly, and no extra files are present.
+    The user must create and populate golden_output/8_jk, golden_output/2_el_yagi, and golden_output/dipole_pattern.
+    """
+    programs = [
+        {
+            "name": "8_jk",
+            "script": "8_jk.py",
+        },
+        {
+            "name": "2_el_yagi",
+            "script": "2_el_yagi.py",
+        },
+        {
+            "name": "dipole_pattern",
+            "script": "dipole_pattern.py",
+        },
+    ]
+    for prog in programs:
+        out_dir = os.path.join("output", prog["name"])
+        ref_dir = os.path.join("golden_output", prog["name"])
+        # Clean output directory
+        if os.path.exists(out_dir):
+            shutil.rmtree(out_dir)
+        os.makedirs(out_dir, exist_ok=True)
+        # Run the program
+        run_antenna_script(prog["script"])
+        # Compare file lists
+        expected_files = set(os.listdir(ref_dir))
+        output_files = set(os.listdir(out_dir))
+        assert expected_files == output_files, f"{prog['name']}: Expected files {expected_files}, got {output_files}"
+        # Compare file contents
+        for fname in expected_files:
+            ref_path = os.path.join(ref_dir, fname)
+            out_path = os.path.join(out_dir, fname)
+            assert filecmp.cmp(ref_path, out_path, shallow=False), f"{prog['name']}: File {fname} does not match reference." 
