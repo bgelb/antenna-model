@@ -131,6 +131,32 @@ def main():
         parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m"
     )
 
+    # Add detailed tables for each boom length
+    for r in results:
+        detune_steps = np.arange(0.00, 0.11, 0.01)
+        # Find peaks for bolding
+        gain_arr = np.array(r['gain_vs_detune'])
+        fb_arr = np.array(r['fb_vs_detune'])
+        max_gain = np.max(gain_arr)
+        max_fb = np.max(fb_arr)
+        detail_rows = []
+        for i, detune in enumerate(detune_steps):
+            gain = gain_arr[i]
+            fb = fb_arr[i]
+            gain_str = f"**{gain:.2f}**" if abs(gain - max_gain) < 1e-6 else f"{gain:.2f}"
+            fb_str = f"**{fb:.2f}**" if abs(fb - max_fb) < 1e-6 else f"{fb:.2f}"
+            detail_rows.append([
+                f"{detune*100:.0f}",
+                gain_str,
+                fb_str,
+            ])
+        report.add_table(
+            f"Detail: Gain and F/B vs Detune for Boom {r['boom_ft']:.1f} ft ({r['boom_lambda']:.3f}λ)",
+            ['Detune (%)', 'Fwd Gain (dBi)', 'F/B (dB)'],
+            detail_rows,
+            parameters=f"Boom = {r['boom_ft']:.1f} ft ({r['boom_lambda']:.3f}λ); frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m"
+        )
+
     # Plot: Gain and F/B vs Detune for each boom length
     plt.figure(figsize=(10,6))
     for r in results:
