@@ -463,6 +463,20 @@ def main():
             out_file,
             parameters=f'frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = {frac:.3f}λ'
         )
+        # Add table of forward gain and F/B for frequency offsets
+        table_rows = []
+        for off_khz, freq in zip(offsets_khz, freqs):
+            az_pattern = az_pats[freq]
+            fwd = next(p['gain'] for p in az_pattern if abs(p['az']) < 1e-6)
+            back = next(p['gain'] for p in az_pattern if abs(p['az'] - 180.0) < 1e-6)
+            fb = fwd - back
+            table_rows.append([f"{int(off_khz)}", f"{fwd:.2f}", f"{fb:.2f}"])
+        report.add_table(
+            f'Criticality Data ({frac:.3f}λ)',
+            ['Offset (kHz)', 'Forward Gain (dBi)', 'F/B (dB)'],
+            table_rows,
+            parameters=f'spacing = {frac:.3f}λ; detune = {det*100:.2f}%'
+        )
 
     # Save report
     report.save()
