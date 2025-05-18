@@ -492,18 +492,23 @@ def main():
 
     vswr_plot_path = os.path.join('output/2_el_yagi_15m', 'vswr_vs_freq.png')
     plt.figure(figsize=(10, 6))
+
+    # Store impedance data: {spacing: [(offset_khz, R, X), ...]}
+    impedance_data = {}
+
     for frac in spacing_fracs:
         det = best_detune_spacing[frac]
         spacing_m = frac * wavelength_m
         vswr_values = []
-        for f_mhz in vswr_freqs_mhz:
+        imp_list = []
+        for off_khz, f_mhz in zip(vswr_offsets_khz, vswr_freqs_mhz):
             model = build_two_element_yagi_model(f_mhz, det, spacing_m)
-            # Fast impedance-only run via simulate_pattern (coarse)
             imp_res = sim.simulate_pattern(
                 model, f_mhz, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
             )['impedance']
             if imp_res is None:
                 vswr_values.append(np.nan)
+                imp_list.append((off_khz, np.nan, np.nan))
                 continue
             R, X = imp_res
             Z = complex(R, X)
@@ -511,7 +516,10 @@ def main():
             gamma = (Z - Z0) / (Z + Z0)
             vswr = (1 + abs(gamma)) / (1 - abs(gamma)) if abs(gamma) < 1 else (1 + abs(gamma)) / (abs(gamma) - 1)
             vswr_values.append(vswr)
+            imp_list.append((off_khz, R, X))
         plt.plot(vswr_freqs_mhz, vswr_values, label=f"{frac:.3f}λ")
+        impedance_data[frac] = imp_list
+
     plt.xlabel('Frequency (MHz)')
     plt.ylabel('VSWR (50 Ω)')
     plt.title('VSWR vs Frequency for Reflector-Tuned 2-el Yagi (15 m)')
@@ -522,6 +530,18 @@ def main():
     plt.savefig(vswr_plot_path)
     report.add_plot('VSWR vs Frequency (All Spacings)', vswr_plot_path, parameters='Spacing fractions = 0.05-0.40 λ; reflector detune set for max F/B at 21 MHz; height = 0.5 λ; 50 Ω reference')
     plt.close()
+
+    # --- Impedance tables ---
+    for frac in spacing_fracs:
+        rows = []
+        for off_khz, R, X in impedance_data[frac]:
+            rows.append([f"{int(off_khz)}", f"{R:.1f}", f"{X:.1f}"])
+        report.add_table(
+            f'Feedpoint Impedance vs Frequency ({frac:.3f}λ)',
+            ['Offset (kHz)', 'R (Ω)', 'X (Ω)'],
+            rows,
+            parameters=f'spacing = {frac:.3f}λ; detune = {best_detune_spacing[frac]*100:.2f}%'
+        )
 
     # Save report
     report.save()
