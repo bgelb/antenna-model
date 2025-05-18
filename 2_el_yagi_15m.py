@@ -311,14 +311,77 @@ def main():
     # Legend labels include optimal detune percentage
     labels_gain = [f"{frac:.3f}λ ({dg*100:.0f}%)" for frac, dg in zip(spacing_subset, detune_gain_list)]
     labels_fb = [f"{frac:.3f}λ ({df*100:.0f}%)" for frac, df in zip(spacing_subset, detune_fb_list)]
+    # Compute dipole elevation and azimuth patterns for reference
+    dip_elev_res = sim.simulate_pattern(dipole_model, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0)
+    dip_elev_pat = dip_elev_res['pattern']
+    dip_az_res = dip_az  # already simulated earlier
+    # Add dipole to dictionaries
+    spacing_elev_gain['dipole'] = dip_elev_pat
+    spacing_az_gain['dipole'] = dip_az_res
+    spacing_elev_fb['dipole'] = dip_elev_pat
+    spacing_az_fb['dipole'] = dip_az_res
+    # Extend keys and labels
+    keys_gain = spacing_subset + ['dipole']
+    labels_gain.append('Dipole')
+    keys_fb = spacing_subset + ['dipole']
+    labels_fb.append('Dipole')
 
+    # Custom polar plots for Max Gain per Spacing with dipole dashed
     polar_gain_plot = os.path.join('output/2_el_yagi_15m', 'spacing_subset_polar_gain.png')
-    plot_polar_patterns(spacing_elev_gain, spacing_az_gain, spacing_subset, 30.0, polar_gain_plot, args.show_gui, legend_labels=labels_gain)
-    report.add_plot('Polar Patterns (Max Gain per Spacing)', polar_gain_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.1f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation cut = 30°")
+    fig, (ax_el, ax_az) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    # Elevation patterns
+    raw_max = max(max(p['gain'] for p in spacing_elev_gain[f]) for f in keys_gain)
+    from antenna_model import configure_polar_axes
+    configure_polar_axes(ax_el, 'Elevation Pattern (az=0)', raw_max)
+    for idx, key in enumerate(keys_gain):
+        data = sorted(spacing_elev_gain[key], key=lambda p: p['el'])
+        theta = np.radians([p['el'] for p in data])
+        r = [0.89 ** ((raw_max - p['gain']) / 2.0) for p in data]
+        style = '--' if key == 'dipole' else '-'
+        ax_el.plot(theta, r, label=labels_gain[idx], color=colors[idx % len(colors)], linestyle=style)
+    ax_el.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
+    # Azimuth patterns
+    raw_max_az = max(max(p['gain'] for p in spacing_az_gain[f]) for f in keys_gain)
+    configure_polar_axes(ax_az, f'Azimuth Pattern (el=30°)', raw_max_az, zero_loc='E', direction=-1)
+    for idx, key in enumerate(keys_gain):
+        data = sorted(spacing_az_gain[key], key=lambda p: p['az'])
+        phi = np.radians([p['az'] for p in data])
+        r = [0.89 ** ((raw_max_az - p['gain']) / 2.0) for p in data]
+        style = '--' if key == 'dipole' else '-'
+        ax_az.plot(phi, r, label=labels_gain[idx], color=colors[idx % len(colors)], linestyle=style)
+    ax_az.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
+    plt.tight_layout()
+    plt.savefig(polar_gain_plot)
+    report.add_plot('Polar Patterns (Max Gain per Spacing)', polar_gain_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.1f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation cut = 30°; dipole dashed")
+    plt.close(fig)
 
     polar_fb_plot = os.path.join('output/2_el_yagi_15m', 'spacing_subset_polar_fb.png')
-    plot_polar_patterns(spacing_elev_fb, spacing_az_fb, spacing_subset, 30.0, polar_fb_plot, args.show_gui, legend_labels=labels_fb)
-    report.add_plot('Polar Patterns (Max F/B per Spacing)', polar_fb_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.1f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation cut = 30°")
+    fig, (ax_el, ax_az) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14, 7))
+    # Elevation patterns
+    raw_max = max(max(p['gain'] for p in spacing_elev_fb[f]) for f in keys_fb)
+    configure_polar_axes(ax_el, 'Elevation Pattern (az=0)', raw_max)
+    for idx, key in enumerate(keys_fb):
+        data = sorted(spacing_elev_fb[key], key=lambda p: p['el'])
+        theta = np.radians([p['el'] for p in data])
+        r = [0.89 ** ((raw_max - p['gain']) / 2.0) for p in data]
+        style = '--' if key == 'dipole' else '-'
+        ax_el.plot(theta, r, label=labels_fb[idx], color=colors[idx % len(colors)], linestyle=style)
+    ax_el.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
+    # Azimuth patterns
+    raw_max_az = max(max(p['gain'] for p in spacing_az_fb[f]) for f in keys_fb)
+    configure_polar_axes(ax_az, f'Azimuth Pattern (el=30°)', raw_max_az, zero_loc='E', direction=-1)
+    for idx, key in enumerate(keys_fb):
+        data = sorted(spacing_az_fb[key], key=lambda p: p['az'])
+        phi = np.radians([p['az'] for p in data])
+        r = [0.89 ** ((raw_max_az - p['gain']) / 2.0) for p in data]
+        style = '--' if key == 'dipole' else '-'
+        ax_az.plot(phi, r, label=labels_fb[idx], color=colors[idx % len(colors)], linestyle=style)
+    ax_az.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
+    plt.tight_layout()
+    plt.savefig(polar_fb_plot)
+    report.add_plot('Polar Patterns (Max F/B per Spacing)', polar_fb_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.1f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation cut = 30°; dipole dashed")
+    plt.close(fig)
 
     # Plot: Gain and F/B vs Detune for each boom length
     plt.figure(figsize=(10,6))
@@ -353,30 +416,6 @@ def main():
     plt.savefig(fb_detune_plot)
     report.add_plot('Front-to-Back Ratio vs Detune for Each Spacing Fraction', fb_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
     plt.close()
-
-    # Plot: Max Gain and F/B vs Boom Length
-    plt.figure(figsize=(10,6))
-    plt.plot(boom_lengths_ft, [r['best_gain'] for r in results], 'o-', label='Max Gain (dBi)')
-    plt.plot(boom_lengths_ft, [r['best_fb'] for r in results], 's-', label='Max F/B (dB)')
-    plt.xlabel('Boom Length (ft)')
-    plt.ylabel('dB')
-    plt.title('Max Gain and F/B vs Boom Length (15m Yagi)')
-    plt.legend()
-    plt.grid(True)
-    boom_plot = os.path.join('output/2_el_yagi_15m', 'max_gain_fb_vs_boom.png')
-    plt.savefig(boom_plot)
-    report.add_plot('Max Gain and F/B vs Boom Length', boom_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
-    plt.close()
-
-    # Main pattern plot for best gain config
-    best = max(results, key=lambda r: r['best_gain'])
-    best_model = build_two_element_yagi_model(FREQ_MHZ, best['best_gain_detune'], best['boom_m'])
-    heights = [HEIGHT_M]
-    el_pats = compute_elevation_patterns(sim, best_model, FREQ_MHZ, heights, GROUND)
-    az_pats = compute_azimuth_patterns(sim, best_model, FREQ_MHZ, heights, GROUND, el=30.0)
-    pattern_plot = os.path.join('output/2_el_yagi_15m', 'pattern_best_gain.png')
-    plot_polar_patterns(el_pats, az_pats, heights, 30.0, pattern_plot, args.show_gui)
-    report.add_plot('Azimuth and Elevation Pattern (Best Gain Config)', pattern_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
 
     # Save report
     report.save()
