@@ -132,31 +132,97 @@ def main():
         parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)"
     )
 
-    # Add detailed tables for each boom length
-    for r in results:
-        detune_steps = np.arange(0.00, 0.11, 0.01)
-        # Find peaks for bolding
-        gain_arr = np.array(r['gain_vs_detune'])
-        fb_arr = np.array(r['fb_vs_detune'])
-        max_gain = np.max(gain_arr)
-        max_fb = np.max(fb_arr)
-        detail_rows = []
-        for i, detune in enumerate(detune_steps):
-            gain = gain_arr[i]
-            fb = fb_arr[i]
-            gain_str = f"**{gain:.2f}**" if abs(gain - max_gain) < 1e-6 else f"{gain:.2f}"
-            fb_str = f"**{fb:.2f}**" if abs(fb - max_fb) < 1e-6 else f"{fb:.2f}"
-            detail_rows.append([
-                f"{detune*100:.0f}",
-                gain_str,
-                fb_str,
-            ])
-        report.add_table(
-            f"Detail: Gain and F/B vs Detune for Boom {r['boom_ft']:.1f} ft ({r['boom_lambda']:.3f}λ)",
-            ['Detune (%)', 'Fwd Gain (dBi)', 'F/B (dB)'],
-            detail_rows,
-            parameters=f"Boom = {r['boom_ft']:.1f} ft ({r['boom_lambda']:.3f}λ); frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)"
-        )
+    # === Detune vs Spacing sweep tables (mirrors original 20 m script) ===
+    detune_steps = np.arange(0.00, 0.11, 0.01)  # 0–10 % in 1 % steps
+    spacing_fracs = [0.05, 0.075, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40]
+
+    fg_matrix = []  # forward gain (dBi)
+    fb_matrix = []  # F/B (dB)
+
+    # Pre-build the driven element once
+    half_driven_len = driven_length / 2.0
+    driven_elem = AntennaElement(
+        x1=0.0, y1=-half_driven_len, z1=0.0,
+        x2=0.0, y2=half_driven_len, z2=0.0,
+        segments=SEGMENTS, radius=RADIUS,
+    )
+
+    for detune in detune_steps:
+        # Lengthen reflector
+        passive_length = resonant_dipole_length(FREQ_MHZ / (1.0 + detune))
+        half_passive_len = passive_length / 2.0
+
+        fg_row = []
+        fb_row = []
+        for frac in spacing_fracs:
+            spacing_m = frac * wavelength_m
+
+            model = AntennaModel()
+            model.add_element(driven_elem)
+            model.add_feedpoint(element_index=0, segment=center_seg)
+            # Reflector
+            ref = AntennaElement(
+                x1=-spacing_m, y1=-half_passive_len, z1=0.0,
+                x2=-spacing_m, y2=half_passive_len, z2=0.0,
+                segments=SEGMENTS, radius=RADIUS,
+            )
+            model.add_element(ref)
+
+            az_res = sim.simulate_azimuth_pattern(
+                model, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0
+            )
+            fwd = next(p['gain'] for p in az_res if abs(p['az']) < 1e-6)
+            back = next(p['gain'] for p in az_res if abs(p['az'] - 180.0) < 1e-6)
+            fg_row.append(fwd)
+            fb_row.append(fwd - back)
+        fg_matrix.append(fg_row)
+        fb_matrix.append(fb_row)
+
+    # Bold peaks per spacing column
+    fg_peaks = [max(col) for col in zip(*fg_matrix)]
+    fb_peaks = [max(col) for col in zip(*fb_matrix)]
+
+    headers_sweep = ['Detune (%)', 'Reflector Length (λ)'] + [
+        f"{frac:.2f}λ ({(frac * wavelength_m * 3.28084):.1f} ft)" for frac in spacing_fracs
+    ]
+
+    # Forward Gain table
+    rows_fg = []
+    for i, detune in enumerate(detune_steps):
+        refl_len_wl = 0.5 * (1 + detune)
+        row = [f'{detune*100:.2f}', f'{refl_len_wl:.3f}']
+        for j, val in enumerate(fg_matrix[i]):
+            if abs(val - fg_peaks[j]) < 1e-6:
+                row.append(f'**{val:.2f}**')
+            else:
+                row.append(f'{val:.2f}')
+        rows_fg.append(row)
+
+    report.add_table(
+        'Forward Gain vs Detune (%) and Spacing',
+        headers_sweep,
+        rows_fg,
+        parameters=f"frequency = {FREQ_MHZ} MHz; detune steps = 0%–10% in 1% increments; spacing fractions = {spacing_fracs} λ; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; height = {HEIGHT_M:.1f} m (~0.5λ); elevation = 30°"
+    )
+
+    # F/B table
+    rows_fb = []
+    for i, detune in enumerate(detune_steps):
+        refl_len_wl = 0.5 * (1 + detune)
+        row = [f'{detune*100:.2f}', f'{refl_len_wl:.3f}']
+        for j, val in enumerate(fb_matrix[i]):
+            if abs(val - fb_peaks[j]) < 1e-6:
+                row.append(f'**{val:.2f}**')
+            else:
+                row.append(f'{val:.2f}')
+        rows_fb.append(row)
+
+    report.add_table(
+        'Front-to-Back Ratio vs Detune (%) and Spacing',
+        headers_sweep,
+        rows_fb,
+        parameters=f"frequency = {FREQ_MHZ} MHz; detune steps = 0%–10% in 1% increments; spacing fractions = {spacing_fracs} λ; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; height = {HEIGHT_M:.1f} m (~0.5λ); elevation = 30°"
+    )
 
     # Plot: Gain and F/B vs Detune for each boom length
     plt.figure(figsize=(10,6))
