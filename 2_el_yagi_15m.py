@@ -417,6 +417,53 @@ def main():
     report.add_plot('Front-to-Back Ratio vs Detune for Each Spacing Fraction', fb_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
     plt.close()
 
+    # === Tuning criticality analysis ===
+    critical_spacings = [0.05, 0.075, 0.10, 0.15]
+    offsets_khz = np.array([-100, -50, -25, 0, 25, 50, 100])
+    freqs = FREQ_MHZ + offsets_khz / 1e3
+    labels = [f"{int(off)} kHz" if off != 0 else "0 kHz" for off in offsets_khz]
+    # Find best detune for max F/B at nominal frequency
+    best_detunes = {}
+    for frac in critical_spacings:
+        best_fb = -1e9
+        best_det = 0.0
+        spacing_m = frac * wavelength_m
+        for det in detune_fracs:
+            model = build_two_element_yagi_model(FREQ_MHZ, det, spacing_m)
+            az_pat = sim.simulate_azimuth_pattern(
+                model, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0
+            )
+            fwd = next(p['gain'] for p in az_pat if abs(p['az']) < 1e-6)
+            back = next(p['gain'] for p in az_pat if abs(p['az'] - 180.0) < 1e-6)
+            fb = fwd - back
+            if fb > best_fb:
+                best_fb = fb
+                best_det = det
+        best_detunes[frac] = best_det
+    # Generate and include criticality plots
+    for frac in critical_spacings:
+        det = best_detunes[frac]
+        spacing_m = frac * wavelength_m
+        elev_pats = {}
+        az_pats = {}
+        for freq in freqs:
+            model = build_two_element_yagi_model(freq, det, spacing_m)
+            elev_pats[freq] = sim.simulate_pattern(
+                model, freq, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0
+            )['pattern']
+            az_pats[freq] = sim.simulate_azimuth_pattern(
+                model, freq, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0
+            )
+        out_file = os.path.join('output/2_el_yagi_15m', f'criticality_{int(frac*1000)}pl.png')
+        plot_polar_patterns(
+            elev_pats, az_pats, list(freqs), el_fixed=30.0, output_file=out_file, legend_labels=labels
+        )
+        report.add_plot(
+            f'Criticality Polar Patterns ({frac:.3f}λ)',
+            out_file,
+            parameters=f'frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = {frac:.3f}λ'
+        )
+
     # Save report
     report.save()
 
