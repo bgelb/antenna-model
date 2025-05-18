@@ -26,7 +26,9 @@ FREQ_MHZ = 21.0
 SEGMENTS = 21
 RADIUS = 0.001
 GROUND = 'average'
-HEIGHT_M = resonant_dipole_length(FREQ_MHZ) / 2  # ~half-wavelength height
+c = 299792458.0
+wavelength_m_global = c / (FREQ_MHZ * 1e6)
+HEIGHT_M = 0.5 * wavelength_m_global  # 0.5 λ height (~half-wavelength)
 
 # Helper to build Yagi
 
@@ -57,8 +59,7 @@ def main():
     parser.add_argument('--show-gui', action='store_true', help='Show plots interactively instead of saving')
     args = parser.parse_args()
 
-    c = 299792458.0
-    wavelength_m = c / (FREQ_MHZ * 1e6)
+    wavelength_m = wavelength_m_global
     driven_length = resonant_dipole_length(FREQ_MHZ)
     center_seg = (SEGMENTS + 1) // 2
     sim = AntennaSimulator()
@@ -154,7 +155,7 @@ def main():
             f"Detail: Gain and F/B vs Detune for Boom {r['boom_ft']:.1f} ft ({r['boom_lambda']:.3f}λ)",
             ['Detune (%)', 'Fwd Gain (dBi)', 'F/B (dB)'],
             detail_rows,
-            parameters=f"Boom = {r['boom_ft']:.1f} ft ({r['boom_lambda']:.3f}λ); frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)"
+            parameters=f"Boom = {r['boom_ft']:.1f} ft ({r['boom_lambda']:.3f}λ); frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)"
         )
 
     # Plot: Gain and F/B vs Detune for each boom length
@@ -169,7 +170,7 @@ def main():
     gain_detune_plot = os.path.join('output/2_el_yagi_15m', 'gain_vs_detune.png')
     os.makedirs('output/2_el_yagi_15m', exist_ok=True)
     plt.savefig(gain_detune_plot)
-    report.add_plot('Forward Gain vs Detune for Each Boom Length', gain_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
+    report.add_plot('Forward Gain vs Detune for Each Boom Length', gain_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
     plt.close()
 
     plt.figure(figsize=(10,6))
@@ -182,7 +183,7 @@ def main():
     plt.grid(True)
     fb_detune_plot = os.path.join('output/2_el_yagi_15m', 'fb_vs_detune.png')
     plt.savefig(fb_detune_plot)
-    report.add_plot('Front-to-Back Ratio vs Detune for Each Boom Length', fb_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
+    report.add_plot('Front-to-Back Ratio vs Detune for Each Boom Length', fb_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
     plt.close()
 
     # Plot: Max Gain and F/B vs Boom Length
@@ -196,7 +197,7 @@ def main():
     plt.grid(True)
     boom_plot = os.path.join('output/2_el_yagi_15m', 'max_gain_fb_vs_boom.png')
     plt.savefig(boom_plot)
-    report.add_plot('Max Gain and F/B vs Boom Length', boom_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
+    report.add_plot('Max Gain and F/B vs Boom Length', boom_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
     plt.close()
 
     # Main pattern plot for best gain config
@@ -207,7 +208,7 @@ def main():
     az_pats = compute_azimuth_patterns(sim, best_model, FREQ_MHZ, heights, GROUND, el=30.0)
     pattern_plot = os.path.join('output/2_el_yagi_15m', 'pattern_best_gain.png')
     plot_polar_patterns(el_pats, az_pats, heights, 30.0, pattern_plot, args.show_gui)
-    report.add_plot('Azimuth and Elevation Pattern (Best Gain Config)', pattern_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m; ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
+    report.add_plot('Azimuth and Elevation Pattern (Best Gain Config)', pattern_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
 
     # Save report
     report.save()
