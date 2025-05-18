@@ -163,3 +163,9 @@ Parameters: spacing = 0.150λ; detune = 5.00%
 | 25 | 10.98 | 17.21 |
 | 50 | 10.98 | 17.20 |
 | 100 | 10.99 | 17.18 |
+
+## VSWR vs Frequency (All Spacings)
+
+Parameters: Spacing fractions = 0.05-0.40 λ; reflector detune set for max F/B at 21 MHz; height = 0.5 λ; 50 Ω reference
+
+![VSWR vs Frequency (All Spacings)](vswr_vs_freq.png)
