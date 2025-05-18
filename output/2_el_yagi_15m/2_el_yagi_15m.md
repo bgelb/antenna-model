@@ -2,7 +2,7 @@
 
 ## Best Gain and F/B vs Boom Length
 
-Parameters: frequency = 21.0 MHz; height = 3.40 m (~0.5λ); ground = average; segments = 21; radius = 0.001 m
+Parameters: frequency = 21.0 MHz; height = 3.40 m (~0.5λ); ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Boom (ft, λ) | Max Gain (dBi) | Detune for Max Gain (%) | Max F/B (dB) | Detune for Max F/B (%) |
 | --- | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ Parameters: frequency = 21.0 MHz; height = 3.40 m (~0.5λ); ground = average; se
 
 ## Detail: Gain and F/B vs Detune for Boom 2.0 ft (0.043λ)
 
-Parameters: Boom = 2.0 ft (0.043λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 2.0 ft (0.043λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ Parameters: Boom = 2.0 ft (0.043λ); frequency = 21.0 MHz; height = 3.40 m; grou
 
 ## Detail: Gain and F/B vs Detune for Boom 3.0 ft (0.064λ)
 
-Parameters: Boom = 3.0 ft (0.064λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 3.0 ft (0.064λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -54,7 +54,7 @@ Parameters: Boom = 3.0 ft (0.064λ); frequency = 21.0 MHz; height = 3.40 m; grou
 
 ## Detail: Gain and F/B vs Detune for Boom 4.0 ft (0.085λ)
 
-Parameters: Boom = 4.0 ft (0.085λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 4.0 ft (0.085λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ Parameters: Boom = 4.0 ft (0.085λ); frequency = 21.0 MHz; height = 3.40 m; grou
 
 ## Detail: Gain and F/B vs Detune for Boom 5.0 ft (0.107λ)
 
-Parameters: Boom = 5.0 ft (0.107λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 5.0 ft (0.107λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ Parameters: Boom = 5.0 ft (0.107λ); frequency = 21.0 MHz; height = 3.40 m; grou
 
 ## Detail: Gain and F/B vs Detune for Boom 6.0 ft (0.128λ)
 
-Parameters: Boom = 6.0 ft (0.128λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 6.0 ft (0.128λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -108,7 +108,7 @@ Parameters: Boom = 6.0 ft (0.128λ); frequency = 21.0 MHz; height = 3.40 m; grou
 
 ## Detail: Gain and F/B vs Detune for Boom 7.0 ft (0.149λ)
 
-Parameters: Boom = 7.0 ft (0.149λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 7.0 ft (0.149λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -126,7 +126,7 @@ Parameters: Boom = 7.0 ft (0.149λ); frequency = 21.0 MHz; height = 3.40 m; grou
 
 ## Detail: Gain and F/B vs Detune for Boom 8.0 ft (0.171λ)
 
-Parameters: Boom = 8.0 ft (0.171λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 8.0 ft (0.171λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -144,7 +144,7 @@ Parameters: Boom = 8.0 ft (0.171λ); frequency = 21.0 MHz; height = 3.40 m; grou
 
 ## Detail: Gain and F/B vs Detune for Boom 9.0 ft (0.192λ)
 
-Parameters: Boom = 9.0 ft (0.192λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 9.0 ft (0.192λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -162,7 +162,7 @@ Parameters: Boom = 9.0 ft (0.192λ); frequency = 21.0 MHz; height = 3.40 m; grou
 
 ## Detail: Gain and F/B vs Detune for Boom 10.0 ft (0.214λ)
 
-Parameters: Boom = 10.0 ft (0.214λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m
+Parameters: Boom = 10.0 ft (0.214λ); frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 | Detune (%) | Fwd Gain (dBi) | F/B (dB) |
 | --- | --- | --- |
@@ -180,16 +180,24 @@ Parameters: Boom = 10.0 ft (0.214λ); frequency = 21.0 MHz; height = 3.40 m; gro
 
 ## Forward Gain vs Detune for Each Boom Length
 
+Parameters: frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
+
 ![Forward Gain vs Detune for Each Boom Length](gain_vs_detune.png)
 
 ## Front-to-Back Ratio vs Detune for Each Boom Length
+
+Parameters: frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 ![Front-to-Back Ratio vs Detune for Each Boom Length](fb_vs_detune.png)
 
 ## Max Gain and F/B vs Boom Length
 
+Parameters: frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
+
 ![Max Gain and F/B vs Boom Length](max_gain_fb_vs_boom.png)
 
 ## Azimuth and Elevation Pattern (Best Gain Config)
+
+Parameters: frequency = 21.0 MHz; height = 3.40 m; ground = average; segments = 21; radius = 0.001 m; elevation = 30° (azimuth pattern)
 
 ![Azimuth and Elevation Pattern (Best Gain Config)](pattern_best_gain.png)
