@@ -2,6 +2,8 @@
 
 ## Feedpoint Impedance vs Height (8JK - 44')
 
+Parameters: frequency = 14.1 MHz; element_length = 44 ft; spacing = 6.0 m (~0.30 λ); phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m
+
 | Height (m) | R (Ω) | X (Ω) |
 | --- | --- | --- |
 | 5.0 | 85.15495 | 620.5207 |
@@ -11,6 +13,8 @@
 
 ## Feedpoint Impedance vs Height (8JK - 0.5 wl)
 
+Parameters: frequency = 14.1 MHz; element_length = 0.5 λ; spacing = 6.0 m (~0.30 λ); phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m
+
 | Height (m) | R (Ω) | X (Ω) |
 | --- | --- | --- |
 | 5.0 | 27.23075 | 9.393699 |
@@ -19,6 +23,8 @@
 | 20.0 | 38.77084 | 0.618981 |
 
 ## Gain at az=0 for Elevation 0–180° (8JK - 44')
+
+Parameters: frequency = 14.1 MHz; element_length = 44 ft; spacing = 6.0 m (~0.30 λ); phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m; azimuth = 0°
 
 | Elevation (deg) | 5.0 m | 10.0 m | 15.0 m | 20.0 m |
 | --- | --- | --- | --- | --- |
@@ -62,6 +68,8 @@
 
 ## Gain at az=0 for Elevation 0–180° (8JK - 0.5 wl)
 
+Parameters: frequency = 14.1 MHz; element_length = 0.5 λ; spacing = 6.0 m (~0.30 λ); phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m; azimuth = 0°
+
 | Elevation (deg) | 5.0 m | 10.0 m | 15.0 m | 20.0 m |
 | --- | --- | --- | --- | --- |
 | 0 | -999.000 | -999.000 | -297.779 | -298.370 |
@@ -104,17 +112,25 @@
 
 ## Azimuth and Elevation Patterns (8JK - 44')
 
+Parameters: frequency = 14.1 MHz; element_length = 44 ft; spacing = 6.0 m (~0.30 λ); phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m; elevation = 30°
+
 ![Azimuth and Elevation Patterns (8JK - 44')](8_jk_pattern.png)
 
 ## Azimuth and Elevation Patterns (8JK - 0.5 wl)
+
+Parameters: frequency = 14.1 MHz; element_length = 0.5 λ; spacing = 6.0 m (~0.30 λ); phasing = 180° out-of-phase; segments = 21; radius = 0.001 m; ground = average; heights = [5.0, 10.0, 15.0, 20.0] m; elevation = 30°
 
 ![Azimuth and Elevation Patterns (8JK - 0.5 wl)](8_jk_pattern_05wl.png)
 
 ## 8JK vs Dipole vs Yagi Comparison
 
+Parameters: frequency = 14.1 MHz; height = 10.0 m; spacing = 6.0 m (~0.30 λ); elevation = 30°; models = [8JK-44' (spacing=6.0 m (~0.30 λ), phasing=180°), 8JK-0.5λ (spacing=6.0 m (~0.30 λ), phasing=180°), Dipole-0.5λ, Yagi (detune=6%, spacing=0.30λ)]; segments = 21; radius = 0.001 m; ground = average
+
 ![8JK vs Dipole vs Yagi Comparison](8_jk_vs_dipole_vs_yagi_combined.png)
 
 ## Forward Gain vs Elevation (15°–35°)
+
+Parameters: frequency = 14.1 MHz; elevation_range = 15°–35°; heights = [5.0, 10.0, 15.0, 20.0] m; models = [8JK-44' (spacing=6.0 m (~0.30 λ), phasing=180°), 8JK-0.5λ (spacing=6.0 m (~0.30 λ), phasing=180°), Dipole-0.5λ, Yagi (detune=6%, spacing=0.30λ)]; segments = 21; radius = 0.001 m; ground = average
 
 | Elevation (deg) | 8JK - 44' | 8JK - 0.5 wl | Dipole - 0.5 wl | Yagi (6%,0.3 wl) |
 | --- | --- | --- | --- | --- |
