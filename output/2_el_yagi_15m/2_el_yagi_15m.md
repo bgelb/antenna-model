@@ -84,86 +84,6 @@ Parameters: frequency = 21.0 MHz; height = 7.14 m (~0.5λ); ground = average; se
 
 ![Front-to-Back Ratio vs Detune for Each Spacing Fraction](fb_vs_detune.png)
 
-## Criticality Polar Patterns (0.050λ)
-
-Parameters: frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = 0.050λ
-
-![Criticality Polar Patterns (0.050λ)](criticality_50pl.png)
-
-## Criticality Data (0.050λ)
-
-Parameters: spacing = 0.050λ; detune = 5.00%
-
-| Offset (kHz) | Forward Gain (dBi) | F/B (dB) |
-| --- | --- | --- |
-| -100 | 11.06 | 17.36 |
-| -50 | 11.06 | 17.30 |
-| -25 | 11.07 | 17.27 |
-| 0 | 11.07 | 17.24 |
-| 25 | 11.07 | 17.21 |
-| 50 | 11.08 | 17.18 |
-| 100 | 11.08 | 17.11 |
-
-## Criticality Polar Patterns (0.075λ)
-
-Parameters: frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = 0.075λ
-
-![Criticality Polar Patterns (0.075λ)](criticality_75pl.png)
-
-## Criticality Data (0.075λ)
-
-Parameters: spacing = 0.075λ; detune = 5.00%
-
-| Offset (kHz) | Forward Gain (dBi) | F/B (dB) |
-| --- | --- | --- |
-| -100 | 11.08 | 17.17 |
-| -50 | 11.08 | 17.13 |
-| -25 | 11.09 | 17.11 |
-| 0 | 11.09 | 17.10 |
-| 25 | 11.09 | 17.07 |
-| 50 | 11.09 | 17.05 |
-| 100 | 11.10 | 17.01 |
-
-## Criticality Polar Patterns (0.100λ)
-
-Parameters: frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = 0.100λ
-
-![Criticality Polar Patterns (0.100λ)](criticality_100pl.png)
-
-## Criticality Data (0.100λ)
-
-Parameters: spacing = 0.100λ; detune = 5.00%
-
-| Offset (kHz) | Forward Gain (dBi) | F/B (dB) |
-| --- | --- | --- |
-| -100 | 11.06 | 17.17 |
-| -50 | 11.06 | 17.14 |
-| -25 | 11.07 | 17.13 |
-| 0 | 11.07 | 17.11 |
-| 25 | 11.07 | 17.10 |
-| 50 | 11.07 | 17.08 |
-| 100 | 11.08 | 17.05 |
-
-## Criticality Polar Patterns (0.150λ)
-
-Parameters: frequency offsets = ±25, ±50, ±100 kHz; reflector detune optimized for max F/B; spacing = 0.150λ
-
-![Criticality Polar Patterns (0.150λ)](criticality_150pl.png)
-
-## Criticality Data (0.150λ)
-
-Parameters: spacing = 0.150λ; detune = 5.00%
-
-| Offset (kHz) | Forward Gain (dBi) | F/B (dB) |
-| --- | --- | --- |
-| -100 | 10.97 | 17.24 |
-| -50 | 10.97 | 17.23 |
-| -25 | 10.98 | 17.23 |
-| 0 | 10.98 | 17.22 |
-| 25 | 10.98 | 17.21 |
-| 50 | 10.98 | 17.20 |
-| 100 | 10.99 | 17.18 |
-
 ## VSWR vs Frequency (All Spacings)
 
 Parameters: Spacing fractions = 0.05-0.40 λ; reflector detune set for max F/B at 21 MHz; height = 0.5 λ; 50 Ω reference
@@ -496,12 +416,30 @@ Parameters: Lengths and impedances for original unscaled element lengths
 | 0.075 | 6.793 | 7.132 | 14.2 | -20.2 |
 | 0.100 | 6.793 | 7.132 | 23.8 | -10.8 |
 
-## Optimised Detune with X≤3Ω
+## Optimised Detune (Scale fixed, |X|≤5 Ω)
 
-Parameters: Scaled driven element (X≈0), reflector detune tweaked ±2 % to maximise F/B while |X|≤3 Ω.
+Parameters: Detune swept ±2% around baseline with scale fixed at zero-reactance value; forward/back cut uses az_step=180°.
 
 | Spacing λ | Scale | Detune % | R (Ω) | X (Ω) | Gain (dBi) | F/B (dB) |
 | --- | --- | --- | --- | --- | --- | --- |
-| 0.050 | 1.0171 | 4.50 | 13.5 | -1.9 | 10.34 | 10.37 |
-| 0.075 | 1.0111 | 4.50 | 18.6 | -1.9 | 10.82 | 14.94 |
+| 0.050 | 1.0171 | 4.00 | 10.7 | -4.6 | 10.64 | 12.82 |
+| 0.075 | 1.0111 | 4.00 | 15.3 | -4.5 | 11.04 | 16.81 |
 | 0.100 | 1.0063 | 4.50 | 25.2 | -1.5 | 11.02 | 17.04 |
+
+## Pattern Comparison Orig vs Scaled vs Opt (0.050λ)
+
+Parameters: Optimised scale=1.0171, detune=4.00%
+
+![Pattern Comparison Orig vs Scaled vs Opt (0.050λ)](pattern_compare_50pl.png)
+
+## Pattern Comparison Orig vs Scaled vs Opt (0.075λ)
+
+Parameters: Optimised scale=1.0111, detune=4.00%
+
+![Pattern Comparison Orig vs Scaled vs Opt (0.075λ)](pattern_compare_75pl.png)
+
+## Pattern Comparison Orig vs Scaled vs Opt (0.100λ)
+
+Parameters: Optimised scale=1.0063, detune=4.50%
+
+![Pattern Comparison Orig vs Scaled vs Opt (0.100λ)](pattern_compare_100pl.png)
