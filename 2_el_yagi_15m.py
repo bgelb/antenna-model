@@ -662,42 +662,6 @@ def main():
             parameters=f'scale factor = {scale:.4f}; R={R:.1f} Ω, X={X:.1f} Ω'
         )
 
-        # === Fine-tune reflector detune around scale to restore F/B while keeping |X| small ===
-        best_fb_tuned = -1e9
-        best_params = None  # (detune, R, X, fwd, fb)
-        detune_candidates = np.arange(det-0.02, det+0.02+1e-6, 0.0025)
-        for det_c in detune_candidates:
-            # ensure det_c positive
-            if det_c <= 0: continue
-            # build model with scaled driven len but reflector length based on det_c *after* scaling
-            refl_len_c = resonant_dipole_length(FREQ_MHZ / (1+det_c)) * scale
-            driven_len_c = new_driven  # keep same scaled driven
-            half_d_c = driven_len_c / 2
-            half_r_c = refl_len_c / 2
-            model_tuned = AntennaModel()
-            model_tuned.add_element(AntennaElement(x1=0,y1=-half_d_c,z1=0,x2=0,y2=half_d_c,z2=0,segments=SEGMENTS,radius=RADIUS))
-            model_tuned.add_feedpoint(element_index=0,segment=center_seg)
-            model_tuned.add_element(AntennaElement(x1=-spacing_m,y1=-half_r_c,z1=0,x2=-spacing_m,y2=half_r_c,z2=0,segments=SEGMENTS,radius=RADIUS))
-            imp = sim.simulate_pattern(model_tuned, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0)['impedance']
-            if imp is None: continue
-            R_t, X_t = imp
-            if abs(X_t) > 3.0:
-                continue  # outside reactance tolerance
-            az_p = sim.simulate_azimuth_pattern(model_tuned, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
-            fwd_t = next(p['gain'] for p in az_p if abs(p['az'])<1e-6)
-            back_t = next(p['gain'] for p in az_p if abs(p['az']-180.0)<1e-6)
-            fb_t = fwd_t - back_t
-            if fb_t > best_fb_tuned:
-                best_fb_tuned = fb_t
-                best_params = (det_c, R_t, X_t, fwd_t, fb_t)
-        if best_params:
-            det_opt, R_opt, X_opt, g_opt, fb_opt = best_params
-            # add row to a new optimization table list
-            if 'opt_rows' not in locals():
-                opt_rows = []
-            opt_rows.append([
-                f"{frac:.3f}", f"{scale:.4f}", f"{det_opt*100:.2f}", f"{R_opt:.1f}", f"{X_opt:.1f}", f"{g_opt:.2f}", f"{fb_opt:.2f}"])
-
     report.add_table(
         'Rescaled Element Lengths for X≈0',
         ['Spacing λ', 'Scale Factor', 'Driven Len (m)', 'Reflector Len (m)', 'R (Ω)', 'X (Ω)'],
@@ -712,13 +676,52 @@ def main():
         parameters='Lengths and impedances for original unscaled element lengths'
     )
 
-    if 'opt_rows' in locals():
-        report.add_table(
-            'Optimised Detune with X≤3Ω',
-            ['Spacing λ','Scale','Detune %','R (Ω)','X (Ω)','Gain (dBi)','F/B (dB)'],
-            opt_rows,
-            parameters='Scaled driven element (X≈0), reflector detune tweaked ±2 % to maximise F/B while |X|≤3 Ω.'
-        )
+    # === Joint optimisation: scale & detune to maximise F/B with |X| small ===
+    opt_rows = []
+    for frac in rescale_spacings:
+        det_base = best_detune_spacing[frac]
+        spacing_m = frac * wavelength_m
+        # baseline scale from previous search
+        scale_base, _ = find_scale_factor(det_base, spacing_m)
+        scale_list = np.linspace(scale_base-0.03, scale_base+0.03, 13)
+        det_list = np.linspace(det_base-0.02, det_base+0.02, 17)
+        best_cost = 1e9
+        best_tuple = None
+        for sc in scale_list:
+            # Precompute scaled lengths independent of detune? Need driven only.
+            driven_len_sc = resonant_dipole_length(FREQ_MHZ) * sc
+            half_d_sc = driven_len_sc /2
+            for det in det_list:
+                refl_len_sc = resonant_dipole_length(FREQ_MHZ / (1+det)) * sc
+                half_r_sc = refl_len_sc/2
+                model_tmp = AntennaModel()
+                model_tmp.add_element(AntennaElement(
+                    x1=0,y1=-half_d_sc,z1=0,x2=0, y2=half_d_sc,z2=0,segments=SEGMENTS,radius=RADIUS))
+                model_tmp.add_feedpoint(element_index=0, segment=center_seg)
+                model_tmp.add_element(AntennaElement(
+                    x1=-spacing_m,y1=-half_r_sc,z1=0,x2=-spacing_m,y2=half_r_sc,z2=0,segments=SEGMENTS,radius=RADIUS))
+                imp = sim.simulate_pattern(model_tmp, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0)['impedance']
+                R_imp,X_imp = imp
+                az_pat = sim.simulate_azimuth_pattern(model_tmp, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+                fwd = next(p['gain'] for p in az_pat if abs(p['az'])<1e-6)
+                back = next(p['gain'] for p in az_pat if abs(p['az']-180.0)<1e-6)
+                fb_val = fwd - back
+                cost = -fb_val + 0.1*abs(X_imp)  # weight reactance 0.1 dB per ohm
+                if cost < best_cost:
+                    best_cost = cost
+                    best_tuple = (sc, det, R_imp, X_imp, fb_val, fwd)
+        if best_tuple is None:
+            continue
+        sc_opt, det_opt, R_opt, X_opt, fb_opt, gain_opt = best_tuple
+        opt_rows.append([
+            f"{frac:.3f}", f"{sc_opt:.4f}", f"{det_opt*100:.2f}", f"{R_opt:.1f}", f"{X_opt:.1f}", f"{gain_opt:.2f}", f"{fb_opt:.2f}"])
+
+    report.add_table(
+        'Optimised Scale & Detune (High F/B, |X| small)',
+        ['Spacing λ','Scale','Detune %','R (Ω)','X (Ω)','Gain (dBi)','F/B (dB)'],
+        opt_rows,
+        parameters='Search over scale ±3% and detune ±2% around baseline; cost = -F/B + 0.1|X|'
+    )
 
     # Save report
     report.save()
