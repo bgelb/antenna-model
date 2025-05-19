@@ -485,3 +485,13 @@ Parameters: Lengths scaled uniformly so that feedpoint reactance ~0 at 21 MHz; d
 | 0.050 | 1.0171 | 6.909 | 7.254 | 16.4 | 0.1 |
 | 0.075 | 1.0111 | 6.868 | 7.211 | 22.0 | 0.1 |
 | 0.100 | 1.0063 | 6.835 | 7.177 | 28.9 | 0.1 |
+
+## Original Element Lengths and Impedances for Spacings 0.05,0.075,0.10 λ
+
+Parameters: Lengths and impedances for original unscaled element lengths
+
+| Spacing λ | Driven Len (m) | Reflector Len (m) | R (Ω) | X (Ω) |
+| --- | --- | --- | --- | --- |
+| 0.050 | 6.793 | 7.132 | 6.8 | -31.3 |
+| 0.075 | 6.793 | 7.132 | 14.2 | -20.2 |
+| 0.100 | 6.793 | 7.132 | 23.8 | -10.8 |
