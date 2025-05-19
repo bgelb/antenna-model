@@ -546,28 +546,56 @@ def main():
     # === Rescaled element lengths to achieve X≈0 at 21 MHz ===
     rescale_spacings = [0.05, 0.075, 0.10]
 
-    def find_resonant_freq(detune, spacing_m):
-        """Find frequency (MHz) at which X~0 for given geometry using binary search."""
-        f_low, f_high = FREQ_MHZ - 1.0, FREQ_MHZ  # X is pos at FREQ_MHZ, likely negative below
-        for _ in range(12):
-            f_mid = 0.5 * (f_low + f_high)
-            model = build_two_element_yagi_model(f_mid, detune, spacing_m)
-            X_mid = sim.simulate_pattern(
-                model, f_mid, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
-            )['impedance'][1]
-            # If X_mid >0 inductive, resonance lower -> increase length -> lower freq, so move high to mid
-            if X_mid > 0:
-                f_high = f_mid
+    def reactance_for_scale(scale, detune, spacing_m):
+        driven_len = resonant_dipole_length(FREQ_MHZ) * scale
+        refl_len = resonant_dipole_length(FREQ_MHZ / (1 + detune)) * scale
+        model_tmp = AntennaModel()
+        half_d = driven_len / 2
+        half_r = refl_len / 2
+        model_tmp.add_element(AntennaElement(
+            x1=0.0, y1=-half_d, z1=0.0, x2=0.0, y2=half_d, z2=0.0, segments=SEGMENTS, radius=RADIUS))
+        model_tmp.add_feedpoint(element_index=0, segment=center_seg)
+        model_tmp.add_element(AntennaElement(
+            x1=-spacing_m, y1=-half_r, z1=0.0, x2=-spacing_m, y2=half_r, z2=0.0, segments=SEGMENTS, radius=RADIUS))
+        R, X = sim.simulate_pattern(
+            model_tmp, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
+        )['impedance']
+        return X
+
+    def find_scale_factor(detune, spacing_m):
+        # Bracket search between 0.8 and 1.1
+        low, high = 0.8, 1.1
+        X_low = reactance_for_scale(low, detune, spacing_m)
+        X_high = reactance_for_scale(high, detune, spacing_m)
+        # Ensure sign change
+        if X_low * X_high > 0:
+            # expand range
+            for s in np.linspace(0.6, 1.2, 13):
+                Xs = reactance_for_scale(s, detune, spacing_m)
+                if X_low * Xs <= 0:
+                    high, X_high = s, Xs
+                    break
+                if Xs * X_high <= 0:
+                    low, X_low = s, Xs
+                    break
+        # Bisection
+        for _ in range(20):
+            mid = 0.5 * (low + high)
+            X_mid = reactance_for_scale(mid, detune, spacing_m)
+            if abs(X_mid) < 0.1:
+                return mid, X_mid
+            if X_low * X_mid <= 0:
+                high, X_high = mid, X_mid
             else:
-                f_low = f_mid
-        return f_mid
+                low, X_low = mid, X_mid
+        return mid, X_mid
 
     rescale_rows = []
+    pattern_compare_plots = []
     for frac in rescale_spacings:
         det = best_detune_spacing[frac]
         spacing_m = frac * wavelength_m
-        f0 = find_resonant_freq(det, spacing_m)
-        scale = FREQ_MHZ / f0
+        scale, x_final = find_scale_factor(det, spacing_m)
         # original driven length and reflector length
         driven_len = resonant_dipole_length(FREQ_MHZ)
         refl_len = resonant_dipole_length(FREQ_MHZ / (1 + det))
@@ -587,6 +615,46 @@ def main():
         )['impedance']
         rescale_rows.append([
             f"{frac:.3f}", f"{scale:.4f}", f"{new_driven:.3f}", f"{new_refl:.3f}", f"{R:.1f}", f"{X:.1f}"])
+
+        # --- Pattern comparison plot ---
+        orig_model = build_two_element_yagi_model(FREQ_MHZ, det, spacing_m)
+        elev_orig = sim.simulate_pattern(orig_model, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0)['pattern']
+        az_orig = sim.simulate_azimuth_pattern(orig_model, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+        elev_scaled = sim.simulate_pattern(model_scaled, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0)['pattern']
+        az_scaled = sim.simulate_azimuth_pattern(model_scaled, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+
+        # Build plot
+        from antenna_model import configure_polar_axes
+        comp_path = os.path.join('output/2_el_yagi_15m', f'pattern_compare_{int(frac*1000)}pl.png')
+        import matplotlib.pyplot as plt
+        fig, (ax_el, ax_az) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14,7))
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        # Elevation
+        raw_max = max(max(p['gain'] for p in elev_orig), max(p['gain'] for p in elev_scaled))
+        configure_polar_axes(ax_el, 'Elevation Pattern (az=0)', raw_max)
+        for idx, (data, lbl, style) in enumerate([(elev_orig,'Original','--'),(elev_scaled,'Scaled','-')]):
+            sorted_data = sorted(data, key=lambda p:p['el'])
+            theta=np.radians([p['el'] for p in sorted_data])
+            r=[0.89**((raw_max - p['gain'])/2.0) for p in sorted_data]
+            ax_el.plot(theta,r,label=lbl,color=colors[idx%len(colors)],linestyle=style)
+        ax_el.legend(loc='upper right', bbox_to_anchor=(1.2,1.1))
+        # Azimuth
+        raw_max_az = max(max(p['gain'] for p in az_orig), max(p['gain'] for p in az_scaled))
+        configure_polar_axes(ax_az, 'Az Pattern (el=30°)', raw_max_az, zero_loc='E', direction=-1)
+        for idx,(data,lbl,style) in enumerate([(az_orig,'Original','--'),(az_scaled,'Scaled','-')]):
+            sorted_data=sorted(data,key=lambda p:p['az'])
+            phi=np.radians([p['az'] for p in sorted_data])
+            r=[0.89**((raw_max_az - p['gain'])/2.0) for p in sorted_data]
+            ax_az.plot(phi,r,label=lbl,color=colors[idx%len(colors)],linestyle=style)
+        ax_az.legend(loc='upper right', bbox_to_anchor=(1.2,1.1))
+        plt.tight_layout()
+        plt.savefig(comp_path)
+        plt.close(fig)
+        report.add_plot(
+            f'Pattern Comparison Original vs Scaled ({frac:.3f}λ)',
+            comp_path,
+            parameters=f'scale factor = {scale:.4f}; R={R:.1f} Ω, X={X:.1f} Ω'
+        )
 
     report.add_table(
         'Rescaled Element Lengths for X≈0',
