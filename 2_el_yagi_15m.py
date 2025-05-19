@@ -676,6 +676,52 @@ def main():
         parameters='Lengths and impedances for original unscaled element lengths'
     )
 
+    # === Joint optimisation: maximise F/B with |X| <= 5 Ω ===
+    opt_rows = []
+    for frac in rescale_spacings:
+        det_base = best_detune_spacing[frac]
+        spacing_m = frac * wavelength_m
+        best_fb = -999
+        best_params = None
+        for scale in np.arange(0.90, 1.051, 0.005):
+            for d_off in np.arange(-0.02, 0.021, 0.002):
+                det = det_base + d_off
+                if det < 0:
+                    continue
+                # build scaled model
+                driven_len = resonant_dipole_length(FREQ_MHZ) * scale
+                refl_len = resonant_dipole_length(FREQ_MHZ / (1+det)) * scale
+                model_tmp = AntennaModel()
+                half_d = driven_len/2
+                half_r = refl_len/2
+                model_tmp.add_element(AntennaElement(x1=0,y1=-half_d,z1=0,x2=0,y2=half_d,z2=0,segments=SEGMENTS,radius=RADIUS))
+                model_tmp.add_feedpoint(element_index=0, segment=center_seg)
+                model_tmp.add_element(AntennaElement(x1=-spacing_m,y1=-half_r,z1=0,x2=-spacing_m,y2=half_r,z2=0,segments=SEGMENTS,radius=RADIUS))
+                # impedance
+                Rtmp, Xtmp = sim.simulate_pattern(model_tmp, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0)['impedance']
+                if abs(Xtmp) > 5.0:
+                    continue
+                # az pattern for F/B
+                az_tmp = sim.simulate_azimuth_pattern(model_tmp, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+                fwd = next(p['gain'] for p in az_tmp if abs(p['az']) < 1e-6)
+                back = next(p['gain'] for p in az_tmp if abs(p['az']-180.0) < 1e-6)
+                fb = fwd - back
+                if fb > best_fb:
+                    best_fb = fb
+                    best_params = (scale, det, Rtmp, Xtmp, fwd)
+        if best_params is None:
+            continue
+        scale_opt, det_opt, R_opt, X_opt, gain_opt = best_params
+        opt_rows.append([
+            f"{frac:.3f}", f"{scale_opt:.4f}", f"{det_opt*100:.2f}", f"{R_opt:.1f}", f"{X_opt:.1f}", f"{gain_opt:.2f}", f"{best_fb:.2f}"])
+
+    report.add_table(
+        'Optimised Scale+Detune (|X|≤5 Ω) for Max F/B',
+        ['Spacing λ', 'Scale', 'Detune %', 'R (Ω)', 'X (Ω)', 'Gain (dBi)', 'F/B (dB)'],
+        opt_rows,
+        parameters='Grid search scale 0.90–1.05, detune ±2%; best F/B with |X| ≤ 5 Ω'
+    )
+
     # Save report
     report.save()
 
