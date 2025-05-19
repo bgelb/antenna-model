@@ -495,3 +495,13 @@ Parameters: Lengths and impedances for original unscaled element lengths
 | 0.050 | 6.793 | 7.132 | 6.8 | -31.3 |
 | 0.075 | 6.793 | 7.132 | 14.2 | -20.2 |
 | 0.100 | 6.793 | 7.132 | 23.8 | -10.8 |
+
+## Optimised Detune with X≤3Ω
+
+Parameters: Scaled driven element (X≈0), reflector detune tweaked ±2 % to maximise F/B while |X|≤3 Ω.
+
+| Spacing λ | Scale | Detune % | R (Ω) | X (Ω) | Gain (dBi) | F/B (dB) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0.050 | 1.0171 | 4.50 | 13.5 | -1.9 | 10.34 | 10.37 |
+| 0.075 | 1.0111 | 4.50 | 18.6 | -1.9 | 10.82 | 14.94 |
+| 0.100 | 1.0063 | 4.50 | 25.2 | -1.5 | 11.02 | 17.04 |
