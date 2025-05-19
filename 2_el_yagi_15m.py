@@ -626,7 +626,6 @@ def main():
         # Build plot
         from antenna_model import configure_polar_axes
         comp_path = os.path.join('output/2_el_yagi_15m', f'pattern_compare_{int(frac*1000)}pl.png')
-        import matplotlib.pyplot as plt
         fig, (ax_el, ax_az) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14,7))
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         # Elevation
