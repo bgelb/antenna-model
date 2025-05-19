@@ -575,7 +575,10 @@ def main():
         fig, (ax_el, ax_az) = plt.subplots(1, 2, subplot_kw={'polar': True}, figsize=(14,7))
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         # Elevation
-        raw_max = max(max(p['gain'] for p in elev_orig), max(p['gain'] for p in elev_scaled))
+        raw_max = max(
+            max(p['gain'] for p in elev_orig),
+            max(p['gain'] for p in elev_scaled)
+        )
         configure_polar_axes(ax_el, 'Elevation Pattern (az=0)', raw_max)
         for idx, (data, lbl, style) in enumerate([(elev_orig,'Original','--'),(elev_scaled,'Scaled','-')]):
             sorted_data = sorted(data, key=lambda p:p['el'])
@@ -584,7 +587,10 @@ def main():
             ax_el.plot(theta,r,label=lbl,color=colors[idx%len(colors)],linestyle=style)
         ax_el.legend(loc='upper right', bbox_to_anchor=(1.2,1.1))
         # Azimuth
-        raw_max_az = max(max(p['gain'] for p in az_orig), max(p['gain'] for p in az_scaled))
+        raw_max_az = max(
+            max(p['gain'] for p in az_orig),
+            max(p['gain'] for p in az_scaled)
+        )
         configure_polar_axes(ax_az, 'Az Pattern (el=30°)', raw_max_az, zero_loc='E', direction=-1)
         for idx,(data,lbl,style) in enumerate([(az_orig,'Original','--'),(az_scaled,'Scaled','-')]):
             sorted_data=sorted(data,key=lambda p:p['az'])
@@ -700,7 +706,11 @@ def main():
         fig, (ax_el, ax_az) = plt.subplots(1,2,subplot_kw={'polar':True}, figsize=(14,7))
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         # Elevation
-        raw_max = max(max(p['gain'] for p in elev_orig+elev_zero+elev_opt))
+        raw_max = max(
+            max(p['gain'] for p in elev_orig),
+            max(p['gain'] for p in elev_zero),
+            max(p['gain'] for p in elev_opt)
+        )
         configure_polar_axes(ax_el,'Elevation Pattern (az=0)', raw_max)
         for idx,(data,lbl,style) in enumerate([
             (elev_orig,'Original','--'),
@@ -712,7 +722,11 @@ def main():
             ax_el.plot(theta,r,label=lbl,color=colors[idx%len(colors)],linestyle=style)
         ax_el.legend(loc='upper right', bbox_to_anchor=(1.25,1.1))
         # Azimuth
-        raw_max_az = max(max(p['gain'] for p in az_orig+az_zero+az_opt))
+        raw_max_az = max(
+            max(p['gain'] for p in az_orig),
+            max(p['gain'] for p in az_zero),
+            max(p['gain'] for p in az_opt)
+        )
         configure_polar_axes(ax_az,'Az Pattern (el=30°)', raw_max_az, zero_loc='E', direction=-1)
         for idx,(data,lbl,style) in enumerate([
             (az_orig,'Original','--'),
