@@ -543,73 +543,56 @@ def main():
             parameters=f'spacing = {frac:.3f}λ; detune = {best_detune_spacing[frac]*100:.2f}%'
         )
 
-    # === Rescaled element dimensions to achieve X≈0 at 21 MHz ===
+    # === Rescaled element lengths to achieve X≈0 at 21 MHz ===
     rescale_spacings = [0.05, 0.075, 0.10]
-    rescale_rows = []
-    def find_res_freq(frac, det):
-        # coarse sweep to locate zero-reactance frequency under original scaling
-        f_sweep = np.arange(FREQ_MHZ - 1.5, FREQ_MHZ + 0.5, 0.05)
-        last_f = None; last_x = None
-        for f in f_sweep:
-            model = build_two_element_yagi_model(f, det, frac * wavelength_m)
-            imp = sim.simulate_pattern(
-                model, f, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
-            )['impedance']
-            if imp is None:
-                continue
-            _, X = imp
-            if last_x is not None and X * last_x <= 0:
-                # linear interpolate
-                slope = (X - last_x) / (f - last_f)
-                f0 = last_f - last_x / slope if slope != 0 else f
-                return f0
-            last_f, last_x = f, X
-        # fallback: take freq with min |X|
-        mins = []
-        for f in f_sweep:
-            model = build_two_element_yagi_model(f, det, frac * wavelength_m)
-            imp = sim.simulate_pattern(
-                model, f, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
-            )['impedance']
-            if imp is None: continue
-            _, X = imp
-            mins.append((abs(X), f))
-        return min(mins)[1] if mins else FREQ_MHZ
 
+    def find_resonant_freq(detune, spacing_m):
+        """Find frequency (MHz) at which X~0 for given geometry using binary search."""
+        f_low, f_high = FREQ_MHZ - 1.0, FREQ_MHZ  # X is pos at FREQ_MHZ, likely negative below
+        for _ in range(12):
+            f_mid = 0.5 * (f_low + f_high)
+            model = build_two_element_yagi_model(f_mid, detune, spacing_m)
+            X_mid = sim.simulate_pattern(
+                model, f_mid, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
+            )['impedance'][1]
+            # If X_mid >0 inductive, resonance lower -> increase length -> lower freq, so move high to mid
+            if X_mid > 0:
+                f_high = f_mid
+            else:
+                f_low = f_mid
+        return f_mid
+
+    rescale_rows = []
     for frac in rescale_spacings:
         det = best_detune_spacing[frac]
-        f0 = find_res_freq(frac, det)
-        scale = f0 / FREQ_MHZ
-        # Build scaled model (scale lengths by scale factor)
-        freq_for_length = FREQ_MHZ / scale
         spacing_m = frac * wavelength_m
-        model_scaled = build_two_element_yagi_model(freq_for_length, det, spacing_m)
-        # Evaluate at target frequency
-        res = sim.simulate_pattern(model_scaled, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0)
-        R, X_res = res['impedance'] if res['impedance'] else (np.nan, np.nan)
-        az_pat = sim.simulate_azimuth_pattern(model_scaled, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
-        fwd = next(p['gain'] for p in az_pat if abs(p['az']) < 1e-6)
-        back = next(p['gain'] for p in az_pat if abs(p['az'] - 180.0) < 1e-6)
-        fb_val = fwd - back
-        # lengths
-        driven_orig = resonant_dipole_length(freq_for_length)
-        passive_orig = resonant_dipole_length(freq_for_length / (1.0 + det))
+        f0 = find_resonant_freq(det, spacing_m)
+        scale = FREQ_MHZ / f0
+        # original driven length and reflector length
+        driven_len = resonant_dipole_length(FREQ_MHZ)
+        refl_len = resonant_dipole_length(FREQ_MHZ / (1 + det))
+        new_driven = driven_len * scale
+        new_refl = refl_len * scale
+        # Build scaled model manually
+        model_scaled = AntennaModel()
+        half_d = new_driven / 2
+        half_r = new_refl / 2
+        model_scaled.add_element(AntennaElement(
+            x1=0.0, y1=-half_d, z1=0.0, x2=0.0, y2=half_d, z2=0.0, segments=SEGMENTS, radius=RADIUS))
+        model_scaled.add_feedpoint(element_index=0, segment=center_seg)
+        model_scaled.add_element(AntennaElement(
+            x1=-spacing_m, y1=-half_r, z1=0.0, x2=-spacing_m, y2=half_r, z2=0.0, segments=SEGMENTS, radius=RADIUS))
+        R,X = sim.simulate_pattern(
+            model_scaled, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
+        )['impedance']
         rescale_rows.append([
-            f"{frac:.3f}λ",
-            f"{scale*100:.1f}%",
-            f"{driven_orig:.3f}",
-            f"{passive_orig:.3f}",
-            f"{R:.1f}",
-            f"{X_res:.1f}",
-            f"{fwd:.2f}",
-            f"{fb_val:.2f}"
-        ])
+            f"{frac:.3f}", f"{scale:.4f}", f"{new_driven:.3f}", f"{new_refl:.3f}", f"{R:.1f}", f"{X:.1f}"])
 
     report.add_table(
-        'Rescaled Dimensions for Zero Reactance (21 MHz)',
-        ['Spacing', 'Scale Factor', 'Driven Len (m)', 'Reflector Len (m)', 'R (Ω)', 'X (Ω)', 'Gain (dBi)', 'F/B (dB)'],
+        'Rescaled Element Lengths for X≈0',
+        ['Spacing λ', 'Scale Factor', 'Driven Len (m)', 'Reflector Len (m)', 'R (Ω)', 'X (Ω)'],
         rescale_rows,
-        parameters='Elements shortened so feedpoint reactance ≈ 0 at 21 MHz; reflector detune kept the same percentage as original.'
+        parameters='Lengths scaled uniformly so that feedpoint reactance ~0 at 21 MHz; detune held constant.'
     )
 
     # Save report
