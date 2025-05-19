@@ -457,3 +457,31 @@ Parameters: spacing = 0.400λ; detune = 5.00%
 | 250 | 86.1 | -63.3 |
 | 275 | 85.7 | -63.4 |
 | 300 | 85.4 | -63.5 |
+
+## Pattern Comparison Original vs Scaled (0.050λ)
+
+Parameters: scale factor = 1.0171; R=16.4 Ω, X=0.1 Ω
+
+![Pattern Comparison Original vs Scaled (0.050λ)](pattern_compare_50pl.png)
+
+## Pattern Comparison Original vs Scaled (0.075λ)
+
+Parameters: scale factor = 1.0111; R=22.0 Ω, X=0.1 Ω
+
+![Pattern Comparison Original vs Scaled (0.075λ)](pattern_compare_75pl.png)
+
+## Pattern Comparison Original vs Scaled (0.100λ)
+
+Parameters: scale factor = 1.0063; R=28.9 Ω, X=0.1 Ω
+
+![Pattern Comparison Original vs Scaled (0.100λ)](pattern_compare_100pl.png)
+
+## Rescaled Element Lengths for X≈0
+
+Parameters: Lengths scaled uniformly so that feedpoint reactance ~0 at 21 MHz; detune held constant.
+
+| Spacing λ | Scale Factor | Driven Len (m) | Reflector Len (m) | R (Ω) | X (Ω) |
+| --- | --- | --- | --- | --- | --- |
+| 0.050 | 1.0171 | 6.909 | 7.254 | 16.4 | 0.1 |
+| 0.075 | 1.0111 | 6.868 | 7.211 | 22.0 | 0.1 |
+| 0.100 | 1.0063 | 6.835 | 7.177 | 28.9 | 0.1 |
