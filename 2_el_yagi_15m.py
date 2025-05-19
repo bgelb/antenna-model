@@ -417,71 +417,8 @@ def main():
     report.add_plot('Front-to-Back Ratio vs Detune for Each Spacing Fraction', fb_detune_plot, parameters=f"frequency = {FREQ_MHZ} MHz; height = {HEIGHT_M:.2f} m (~0.5λ); ground = {GROUND}; segments = {SEGMENTS}; radius = {RADIUS} m; elevation = 30° (azimuth pattern)")
     plt.close()
 
-    # === VSWR vs Frequency for each spacing fraction ===
-    # Determine best detune for max F/B across *all* spacing_fracs
-    best_detune_spacing = {}
-    for j, frac in enumerate(spacing_fracs):
-        peak_fb = fb_peaks[j]
-        i_row = next(i for i, row in enumerate(fb_matrix) if abs(row[j] - peak_fb) < 1e-6)
-        best_detune_spacing[frac] = detune_steps[i_row]
-
-    # Frequency sweep offsets (kHz) and list in MHz
-    vswr_offsets_khz = np.arange(-300, 301, 25)  # -300 to +300 kHz in 25 kHz steps
-    vswr_freqs_mhz = FREQ_MHZ + vswr_offsets_khz / 1e3
-
-    vswr_plot_path = os.path.join('output/2_el_yagi_15m', 'vswr_vs_freq.png')
-    plt.figure(figsize=(10, 6))
-
-    # Store impedance data: {spacing: [(offset_khz, R, X), ...]}
-    impedance_data = {}
-
-    for frac in spacing_fracs:
-        det = best_detune_spacing[frac]
-        spacing_m = frac * wavelength_m
-        vswr_values = []
-        imp_list = []
-        for off_khz, f_mhz in zip(vswr_offsets_khz, vswr_freqs_mhz):
-            model = build_two_element_yagi_model(f_mhz, det, spacing_m)
-            imp_res = sim.simulate_pattern(
-                model, f_mhz, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0
-            )['impedance']
-            if imp_res is None:
-                vswr_values.append(np.nan)
-                imp_list.append((off_khz, np.nan, np.nan))
-                continue
-            R, X = imp_res
-            Z = complex(R, X)
-            Z0 = 50.0
-            gamma = (Z - Z0) / (Z + Z0)
-            vswr = (1 + abs(gamma)) / (1 - abs(gamma)) if abs(gamma) < 1 else (1 + abs(gamma)) / (abs(gamma) - 1)
-            vswr_values.append(vswr)
-            imp_list.append((off_khz, R, X))
-        plt.plot(vswr_freqs_mhz, vswr_values, label=f"{frac:.3f}λ")
-        impedance_data[frac] = imp_list
-
-    plt.xlabel('Frequency (MHz)')
-    plt.ylabel('VSWR (50 Ω)')
-    plt.title('VSWR vs Frequency for Reflector-Tuned 2-el Yagi (15 m)')
-    plt.ylim(1, 5)
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(vswr_plot_path)
-    report.add_plot('VSWR vs Frequency (All Spacings)', vswr_plot_path, parameters='Spacing fractions = 0.05-0.40 λ; reflector detune set for max F/B at 21 MHz; height = 0.5 λ; 50 Ω reference')
-    plt.close()
-
-    # --- Impedance tables ---
-    for frac in spacing_fracs:
-        rows = []
-        for off_khz, R, X in impedance_data[frac]:
-            rows.append([f"{int(off_khz)}", f"{R:.1f}", f"{X:.1f}"])
-        report.add_table(
-            f'Feedpoint Impedance vs Frequency ({frac:.3f}λ)',
-            ['Offset (kHz)', 'R (Ω)', 'X (Ω)'],
-            rows,
-            parameters=f'spacing = {frac:.3f}λ; detune = {best_detune_spacing[frac]*100:.2f}%'
-        )
-
+    # Baseline optimum detune for max F/B at nominal frequency
+    best_detune_spacing = {frac: det for frac, det in zip(spacing_subset, detune_fb_list)}
     # === Rescaled element lengths to achieve X≈0 at 21 MHz ===
     rescale_spacings = [0.05, 0.075, 0.10]
 
