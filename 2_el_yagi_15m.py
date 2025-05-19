@@ -723,6 +723,80 @@ def main():
         parameters='Search over scale ±3% and detune ±2% around baseline; cost = -F/B + 0.1|X|'
     )
 
+    # --- Update pattern comparison plots to include optimised model ---
+    opt_dict = {float(row[0]): (float(row[1]), float(row[2])/100.0) for row in opt_rows}
+
+    for frac in rescale_spacings:
+        if frac not in opt_dict:
+            continue
+        sc_opt, det_opt = opt_dict[frac]
+        spacing_m = frac * wavelength_m
+        # Build models
+        # Original
+        det_orig = best_detune_spacing[frac]
+        model_orig = build_two_element_yagi_model(FREQ_MHZ, det_orig, spacing_m)
+        elev_orig = sim.simulate_pattern(model_orig, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0)['pattern']
+        az_orig = sim.simulate_azimuth_pattern(model_orig, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+        # Scaled (reactance zero)
+        scale_zero, _ = find_scale_factor(det_orig, spacing_m)
+        driven_zero = resonant_dipole_length(FREQ_MHZ) * scale_zero
+        refl_zero = resonant_dipole_length(FREQ_MHZ / (1 + det_orig)) * scale_zero
+        half_dz, half_rz = driven_zero/2, refl_zero/2
+        model_zero = AntennaModel()
+        model_zero.add_element(AntennaElement(x1=0,y1=-half_dz,z1=0,x2=0,y2=half_dz,z2=0,segments=SEGMENTS,radius=RADIUS))
+        model_zero.add_feedpoint(element_index=0, segment=center_seg)
+        model_zero.add_element(AntennaElement(x1=-spacing_m,y1=-half_rz,z1=0,x2=-spacing_m,y2=half_rz,z2=0,segments=SEGMENTS,radius=RADIUS))
+        elev_zero = sim.simulate_pattern(model_zero, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0)['pattern']
+        az_zero = sim.simulate_azimuth_pattern(model_zero, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+        # Optimized
+        driven_opt = resonant_dipole_length(FREQ_MHZ) * sc_opt
+        refl_opt = resonant_dipole_length(FREQ_MHZ / (1 + det_opt)) * sc_opt
+        half_do, half_ro = driven_opt/2, refl_opt/2
+        model_opt = AntennaModel()
+        model_opt.add_element(AntennaElement(x1=0,y1=-half_do,z1=0,x2=0,y2=half_do,z2=0,segments=SEGMENTS,radius=RADIUS))
+        model_opt.add_feedpoint(element_index=0, segment=center_seg)
+        model_opt.add_element(AntennaElement(x1=-spacing_m,y1=-half_ro,z1=0,x2=-spacing_m,y2=half_ro,z2=0,segments=SEGMENTS,radius=RADIUS))
+        elev_opt = sim.simulate_pattern(model_opt, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=5.0, az_step=360.0)['pattern']
+        az_opt = sim.simulate_azimuth_pattern(model_opt, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el=30.0, az_step=5.0)
+
+        from antenna_model import configure_polar_axes
+        comp_path = os.path.join('output/2_el_yagi_15m', f'pattern_compare_{int(frac*1000)}pl.png')
+        fig, (ax_el, ax_az) = plt.subplots(1,2,subplot_kw={'polar':True}, figsize=(14,7))
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        # Elevation
+        raw_max = max(max(p['gain'] for p in elev_orig+elev_zero+elev_opt))
+        configure_polar_axes(ax_el,'Elevation Pattern (az=0)', raw_max)
+        for idx,(data,lbl,style) in enumerate([
+            (elev_orig,'Original','--'),
+            (elev_zero,'Scaled','-.'),
+            (elev_opt,'Optimized','-')]):
+            sorted_data=sorted(data,key=lambda p:p['el'])
+            theta=np.radians([p['el'] for p in sorted_data])
+            r=[0.89**((raw_max-p['gain'])/2.0) for p in sorted_data]
+            ax_el.plot(theta,r,label=lbl,color=colors[idx%len(colors)],linestyle=style)
+        ax_el.legend(loc='upper right', bbox_to_anchor=(1.25,1.1))
+        # Azimuth
+        raw_max_az = max(max(p['gain'] for p in az_orig+az_zero+az_opt))
+        configure_polar_axes(ax_az,'Az Pattern (el=30°)', raw_max_az, zero_loc='E', direction=-1)
+        for idx,(data,lbl,style) in enumerate([
+            (az_orig,'Original','--'),
+            (az_zero,'Scaled','-.'),
+            (az_opt,'Optimized','-')]):
+            sorted_data=sorted(data,key=lambda p:p['az'])
+            phi=np.radians([p['az'] for p in sorted_data])
+            r=[0.89**((raw_max_az-p['gain'])/2.0) for p in sorted_data]
+            ax_az.plot(phi,r,label=lbl,color=colors[idx%len(colors)],linestyle=style)
+        ax_az.legend(loc='upper right', bbox_to_anchor=(1.25,1.1))
+        plt.tight_layout()
+        plt.savefig(comp_path)
+        plt.close(fig)
+        # Update plot reference
+        report.add_plot(
+            f'Pattern Comparison Orig vs Scaled vs Opt ({frac:.3f}λ)',
+            comp_path,
+            parameters=f'Optimised scale={sc_opt:.4f}, detune={det_opt*100:.2f}%'
+        )
+
     # Save report
     report.save()
 
