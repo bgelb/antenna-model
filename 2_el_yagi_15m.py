@@ -591,10 +591,17 @@ def main():
         return mid, X_mid
 
     rescale_rows = []
+    orig_rows = []
     pattern_compare_plots = []
     for frac in rescale_spacings:
         det = best_detune_spacing[frac]
         spacing_m = frac * wavelength_m
+        # --- Original geometry impedance ---
+        orig_model_tmp = build_two_element_yagi_model(FREQ_MHZ, det, spacing_m)
+        R0, X0 = sim.simulate_pattern(orig_model_tmp, FREQ_MHZ, height_m=HEIGHT_M, ground=GROUND, el_step=90.0, az_step=360.0)['impedance']
+        driven_orig = resonant_dipole_length(FREQ_MHZ)
+        refl_orig = resonant_dipole_length(FREQ_MHZ / (1 + det))
+        orig_rows.append([f"{frac:.3f}", f"{driven_orig:.3f}", f"{refl_orig:.3f}", f"{R0:.1f}", f"{X0:.1f}"])
         scale, x_final = find_scale_factor(det, spacing_m)
         # original driven length and reflector length
         driven_len = resonant_dipole_length(FREQ_MHZ)
@@ -660,6 +667,13 @@ def main():
         ['Spacing λ', 'Scale Factor', 'Driven Len (m)', 'Reflector Len (m)', 'R (Ω)', 'X (Ω)'],
         rescale_rows,
         parameters='Lengths scaled uniformly so that feedpoint reactance ~0 at 21 MHz; detune held constant.'
+    )
+
+    report.add_table(
+        'Original Element Lengths and Impedances for Spacings 0.05,0.075,0.10 λ',
+        ['Spacing λ', 'Driven Len (m)', 'Reflector Len (m)', 'R (Ω)', 'X (Ω)'],
+        orig_rows,
+        parameters='Lengths and impedances for original unscaled element lengths'
     )
 
     # Save report
