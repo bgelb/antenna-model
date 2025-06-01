@@ -170,7 +170,7 @@ def run_antenna_script(script_name):
 def test_output_regression():
     """
     For each antenna program, check that all expected output files are generated, match exactly, and no extra files are present.
-    The user must create and populate golden_output/8_jk, golden_output/2_el_yagi, and golden_output/dipole_pattern.
+    The user must create and populate golden_output/8_jk, golden_output/2_el_yagi, golden_output/dipole_pattern, and golden_output/2_el_yagi_15m.
     """
     programs = [
         {
@@ -184,6 +184,10 @@ def test_output_regression():
         {
             "name": "dipole_pattern",
             "script": "dipole_pattern.py",
+        },
+        {
+            "name": "2_el_yagi_15m",
+            "script": "2_el_yagi_15m.py",
         },
     ]
     for prog in programs:

@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.3, pytest-8.3.5, pluggy-1.5.0 -- /Users/bgelb/fd-yagi-cursor/venv/bin/python3.13
+cachedir: .pytest_cache
+rootdir: /Users/bgelb/fd-yagi-cursor
+collecting ... collected 8 items
+
+test_antenna_model.py::test_resonant_dipole_length PASSED                [ 12%]
+test_antenna_model.py::test_build_dipole_model PASSED                    [ 25%]
+test_antenna_model.py::test_run_pymininec_runs PASSED                    [ 37%]
+test_antenna_model.py::test_dipole_pattern_regression PASSED             [ 50%]
+test_antenna_model.py::test_dipole_impedance_5m PASSED                   [ 62%]
+test_antenna_model.py::test_dipole_impedance_10m PASSED                  [ 75%]
+test_antenna_model.py::TestAntennaModel::test_broadside_dipole_phased_symmetry PASSED [ 87%]
+test_antenna_model.py::test_output_regression PASSED                     [100%]
+
+======================== 8 passed in 258.27s (0:04:18) =========================
