@@ -77,14 +77,13 @@ def main():
     # Simulation parameters
     height_m = 20.0
     freqs_mhz = [7.1, 3.5]
-    detune_fracs = [0.03, 0.04, 0.05, 0.055, 0.06]
+    detune_fracs = [0.03, 0.04, 0.05, 0.06]
     # Define cases: (label, detune_frac), None detune_frac means no reflector
     cases = [
         ("No reflector", None),
         ("3%", 0.03),
         ("4%", 0.04),
         ("5%", 0.05),
-        ("5.5%", 0.055),
         ("6%", 0.06),
     ]
     segments = 21
@@ -349,6 +348,61 @@ def main():
         fgfb_height_rows,
         parameters=f"spacing=20'; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
     )
+    # === Spacing study at 20 m height for 18ft and 16ft ===
+    for spacing_ft in [18.0, 16.0]:
+        # Impedance vs detune
+        imp_spacing: List[List[str]] = []
+        for df in detune_fracs:
+            model = build_two_element_beam_88ft(df, driven_length_ft=88.0, spacing_ft=spacing_ft, segments=segments, radius=radius)
+            R, X = sim.simulate_pattern(
+                model, freq_mhz=7.1, height_m=height_m, ground=ground,
+                el_step=45.0, az_step=360.0
+            )['impedance']
+            imp_spacing.append([f"{int(df*100)}%", f"{R:.2f}", f"{X:.2f}"])
+        report.add_table(
+            f'Feedpoint Impedance vs Detune (spacing={int(spacing_ft)} ft)',
+            ['Detune (%)', 'R (Ω)', 'X (Ω)'],
+            imp_spacing,
+            parameters=f"frequency=7.1 MHz; height={height_m} m; spacing={int(spacing_ft)} ft; ground={ground}; segments={segments}; radius={radius} m"
+        )
+        # Pattern plots vs detune
+        elev_sweep: Dict[float, List[Dict[str, float]]] = {}
+        az_sweep: Dict[float, List[Dict[str, float]]] = {}
+        for df in detune_fracs:
+            model = build_two_element_beam_88ft(df, driven_length_ft=88.0, spacing_ft=spacing_ft, segments=segments, radius=radius)
+            elev_sweep[df] = sim.simulate_pattern(
+                model, freq_mhz=7.1, height_m=height_m, ground=ground,
+                el_step=1.0, az_step=360.0
+            )['pattern']
+            az_sweep[df] = sim.simulate_azimuth_pattern(
+                model, freq_mhz=7.1, height_m=height_m, ground=ground,
+                el=el_fixed, az_step=5.0
+            )
+        labels = [f"{int(df*100)}%" for df in detune_fracs]
+        out_png = os.path.join(report.report_dir, f'detune_sweep_spacing_{int(spacing_ft)}ft.png')
+        plot_polar_patterns(
+            elev_sweep, az_sweep, detune_fracs, el_fixed,
+            out_png, args.show_gui, legend_labels=labels
+        )
+        report.add_plot(
+            f'Detune Sweep Polar Patterns (spacing={int(spacing_ft)} ft)',
+            out_png,
+            parameters=f"frequency=7.1 MHz; height={height_m} m; spacing={int(spacing_ft)} ft; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
+        )
+        # Forward gain & F/B vs detune
+        fgfb_rows_sp: List[List[str]] = []
+        for df in detune_fracs:
+            model = build_two_element_beam_88ft(df, driven_length_ft=88.0, spacing_ft=spacing_ft, segments=segments, radius=radius)
+            az = sim.simulate_azimuth_pattern(model, freq_mhz=7.1, height_m=height_m, ground=ground, el=el_fixed, az_step=5.0)
+            fwd = next(p['gain'] for p in az if abs(p['az']) < 1e-6)
+            back = next(p['gain'] for p in az if abs(p['az'] - 180.0) < 1e-6)
+            fgfb_rows_sp.append([f"{int(df*100)}%", f"{fwd:.2f}", f"{(fwd-back):.2f}"])
+        report.add_table(
+            f'Forward Gain & F/B vs Detune (spacing={int(spacing_ft)} ft)',
+            ['Detune (%)', 'Fwd Gain (dB)', 'F/B (dB)'],
+            fgfb_rows_sp,
+            parameters=f"frequency=7.1 MHz; height={height_m} m; spacing={int(spacing_ft)} ft; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
+        )
 
     report.save()
 
