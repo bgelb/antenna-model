@@ -96,3 +96,13 @@ Parameters: frequency=7.1 MHz; spacing=20'; ground=average; segments=21; radius=
 | 15 | Dipole |  | 89.33 | -41.07 | L=920.6 nH |
 | 20 | Beam | 6.0% | 137.81 | 622.50 | C=36.0 pF |
 | 20 | Dipole |  | 67.78 | -55.73 | L=1249.2 nH |
+
+## Forward Gain & F/B vs Height (7.1 MHz)
+
+Parameters: spacing=20'; ground=average; segments=21; radius=0.001 m; el=30.0°
+
+| Height (m) | Detune (%) | Beam Fwd (dB) | Beam F/B (dB) | No reflector Fwd (dB) | No reflector F/B (dB) |
+| --- | --- | --- | --- | --- | --- |
+| 10 | 6.0% | 8.43 | 6.68 | 4.13 | 0.00 |
+| 15 | 6.0% | 9.84 | 10.36 | 5.55 | 0.00 |
+| 20 | 6.0% | 11.02 | 13.65 | 7.48 | 0.00 |
