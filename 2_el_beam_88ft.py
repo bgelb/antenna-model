@@ -143,56 +143,80 @@ def main():
         imp3_rows,
         parameters=f"driven=88'; spacing=20'; height={height_m} m; segments={segments}; radius={radius} m; ground={ground}"
     )
-    # Forward Gain and Front-to-Back Ratio at 7.1 MHz
-    fgfb_rows: List[List[str]] = []
-    for label, detune in cases:
-        # Build model for each case
-        if detune is None:
-            driven_length_m = feet_to_meters(88.0)
-            model = build_dipole_model(total_length=driven_length_m, segments=segments, radius=radius)
-        else:
-            model = build_two_element_beam_88ft(detune, segments=segments, radius=radius)
-        az_res = sim.simulate_azimuth_pattern(
-            model, freq_mhz=7.1, height_m=height_m, ground=ground, el=el_fixed, az_step=5.0
+    # Forward Gain and Front-to-Back tables at each frequency (beam cases + half-wave dipole reference)
+    for freq in freqs_mhz:
+        fgfb_rows: List[List[str]] = []
+        # Beam / reflector cases
+        for label, detune in cases:
+            if detune is None:
+                # 88' driven element without reflector
+                driven_length_m = feet_to_meters(88.0)
+                model = build_dipole_model(total_length=driven_length_m, segments=segments, radius=radius)
+            else:
+                model = build_two_element_beam_88ft(detune, segments=segments, radius=radius)
+            az_res = sim.simulate_azimuth_pattern(
+                model, freq_mhz=freq, height_m=height_m, ground=ground, el=el_fixed, az_step=5.0
+            )
+            fwd_gain = next(p['gain'] for p in az_res if abs(p['az'] - 0.0) < 1e-6)
+            back_gain = next(p['gain'] for p in az_res if abs(p['az'] - 180.0) < 1e-6)
+            fgfb_rows.append([label, f"{fwd_gain:.2f}", f"{(fwd_gain - back_gain):.2f}"])
+        # Half-wave dipole reference at this frequency
+        ref_length = resonant_dipole_length(freq)
+        ref_model = build_dipole_model(total_length=ref_length, segments=segments, radius=radius)
+        az_res_ref = sim.simulate_azimuth_pattern(
+            ref_model, freq_mhz=freq, height_m=height_m, ground=ground, el=el_fixed, az_step=5.0
         )
-        fwd_gain = next(p['gain'] for p in az_res if abs(p['az'] - 0.0) < 1e-6)
-        back_gain = next(p['gain'] for p in az_res if abs(p['az'] - 180.0) < 1e-6)
-        fgfb_rows.append([label, f"{fwd_gain:.2f}", f"{(fwd_gain - back_gain):.2f}"])
-    report.add_table(
-        "Forward Gain and Front-to-Back at 7.1 MHz",
-        ["Case", "Fwd Gain (dB)", "F/B (dB)"],
-        fgfb_rows,
-        parameters=f"height={height_m} m; el={el_fixed}°; ground={ground}; segments={segments}; radius={radius} m"
-    )
+        fwd_ref = next(p['gain'] for p in az_res_ref if abs(p['az'] - 0.0) < 1e-6)
+        back_ref = next(p['gain'] for p in az_res_ref if abs(p['az'] - 180.0) < 1e-6)
+        fgfb_rows.append(["Half-wave dipole", f"{fwd_ref:.2f}", f"{(fwd_ref - back_ref):.2f}"])
+        report.add_table(
+            f"Forward Gain and F/B at {freq:.1f} MHz",
+            ["Case", "Fwd Gain (dB)", "F/B (dB)"],
+            fgfb_rows,
+            parameters=f"height={height_m} m; el={el_fixed}°; ground={ground}; segments={segments}; radius={radius} m; freq={freq} MHz"
+        )
 
-    # Pattern plots for each frequency (including no-reflector case)
+    # Pattern plots for each frequency (including beam cases and half-wave dipole reference)
     for freq in freqs_mhz:
         elev_pats: Dict[str, List[Dict[str, float]]] = {}
         az_pats: Dict[str, List[Dict[str, float]]] = {}
+        # Beam/reflector cases
         for label, detune in cases:
-            # Build model for each case
             if detune is None:
                 driven_length_m = feet_to_meters(88.0)
                 model = build_dipole_model(total_length=driven_length_m, segments=segments, radius=radius)
             else:
                 model = build_two_element_beam_88ft(detune, segments=segments, radius=radius)
-            # Elevation pattern (az=0)
+            # Elevation (az=0)
             res = sim.simulate_pattern(
                 model, freq_mhz=freq, height_m=height_m, ground=ground,
                 el_step=1.0, az_step=360.0
             )
             elev_pats[label] = res['pattern']
-            # Azimuth pattern (el=fixed)
+            # Azimuth (el fixed)
             az_pats[label] = sim.simulate_azimuth_pattern(
                 model, freq_mhz=freq, height_m=height_m, ground=ground,
                 el=el_fixed, az_step=5.0
             )
-        # Plot polar patterns
-        case_labels = [label for label, _ in cases]
+        # Half-wave dipole reference
+        ref_label = "Half-wave dipole"
+        ref_length = resonant_dipole_length(freq)
+        ref_model = build_dipole_model(total_length=ref_length, segments=segments, radius=radius)
+        res_ref = sim.simulate_pattern(
+            ref_model, freq_mhz=freq, height_m=height_m, ground=ground,
+            el_step=1.0, az_step=360.0
+        )
+        elev_pats[ref_label] = res_ref['pattern']
+        az_pats[ref_label] = sim.simulate_azimuth_pattern(
+            ref_model, freq_mhz=freq, height_m=height_m, ground=ground,
+            el=el_fixed, az_step=5.0
+        )
+        # Compile labels including dipole ref
+        plot_labels = [label for label, _ in cases] + [ref_label]
         output_file = os.path.join(report.report_dir, f'polar_patterns_{freq:.1f}MHz.png')
         plot_polar_patterns(
-            elev_pats, az_pats, case_labels, el_fixed,
-            output_file, args.show_gui, legend_labels=case_labels
+            elev_pats, az_pats, plot_labels, el_fixed,
+            output_file, args.show_gui, legend_labels=plot_labels
         )
         report.add_plot(
             f'Polar Patterns at {freq:.1f} MHz',
