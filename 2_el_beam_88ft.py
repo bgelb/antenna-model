@@ -122,13 +122,6 @@ def main():
         else:
             L7 = abs(X7)/(2*math.pi*7.1e6)
             match7 = f"L={L7*1e9:.1f} nH"
-        # Series compensation for 3.5 MHz
-        if X3 > 0:
-            C3 = 1/(2*math.pi*3.5e6*X3)
-            match3 = f"C={C3*1e12:.1f} pF"
-        else:
-            L3 = abs(X3)/(2*math.pi*3.5e6)
-            match3 = f"L={L3*1e9:.1f} nH"
         imp7_rows.append([label, f"{R7:.2f}", f"{X7:.2f}", match7])
         imp3_rows.append([label, f"{R3:.2f}", f"{X3:.2f}", match3])
     report.add_table(
@@ -243,28 +236,32 @@ def main():
                 best_df = df
         best_detunes[h] = best_df
 
-    # Pattern plots for each height at best detune
+    # Combined study patterns for heights 10m, 15m, and 20m at 7.1 MHz
+    elev_study_pats: Dict[float, List[Dict[str, float]]] = {}
+    az_study_pats: Dict[float, List[Dict[str, float]]] = {}
+    legend_labels: List[str] = []
     for h in heights_study:
         df = best_detunes[h]
-        m = build_two_element_beam_88ft(df, segments=segments, radius=radius)
-        elev_pat = sim.simulate_pattern(
-            m, freq_mhz=7.1, height_m=h, ground=ground,
+        model = build_two_element_beam_88ft(df, segments=segments, radius=radius)
+        elev_study_pats[h] = sim.simulate_pattern(
+            model, freq_mhz=7.1, height_m=h, ground=ground,
             el_step=1.0, az_step=360.0
         )['pattern']
-        az_pat = sim.simulate_azimuth_pattern(
-            m, freq_mhz=7.1, height_m=h, ground=ground,
+        az_study_pats[h] = sim.simulate_azimuth_pattern(
+            model, freq_mhz=7.1, height_m=h, ground=ground,
             el=el_fixed, az_step=5.0
         )
-        label = f"{h:.0f} m (detune={df*100:.1f}%)"
-        output_file = os.path.join(report.report_dir, f'study_pattern_{int(h)}m.png')
-        plot_polar_patterns(
-            {h: elev_pat}, {h: az_pat}, [h], el_fixed,
-            output_file, args.show_gui, legend_labels=[label]
-        )
-        report.add_plot(
-            f'Study Pattern at {h:.0f} m', output_file,
-            parameters=f"frequency=7.1 MHz; height={h} m; detune={df*100:.1f}%; spacing=20'; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
-        )
+        legend_labels.append(f"{h:.0f} m (detune={df*100:.1f}%)")
+    study_output = os.path.join(report.report_dir, 'study_patterns_heights_7.1MHz.png')
+    plot_polar_patterns(
+        elev_study_pats, az_study_pats, heights_study, el_fixed,
+        study_output, args.show_gui, legend_labels=legend_labels
+    )
+    report.add_plot(
+        f'Combined Study Patterns at Heights (7.1 MHz)',
+        study_output,
+        parameters=f"heights={heights_study}; detunes={[best_detunes[h] for h in heights_study]}; spacing=20'; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
+    )
 
     # Feedpoint impedance vs height for best detune
     imp_study: List[List[str]] = []
