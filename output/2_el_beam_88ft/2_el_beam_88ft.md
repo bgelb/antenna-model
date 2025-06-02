@@ -62,6 +62,12 @@ Parameters: height=20.0 m; ground=average; segments=21; radius=0.001 m; el=30.0�
 
 ![Polar Patterns at 3.5 MHz](polar_patterns_3.5MHz.png)
 
+## Beam Patterns vs Height at 7.1 MHz
+
+Parameters: heights=[10.0, 15.0, 20.0]; detunes=[0.06, 0.06, 0.06]; spacing=20'; ground=average; segments=21; radius=0.001 m; el=30.0°
+
+![Beam Patterns vs Height at 7.1 MHz](beam_patterns_heights_7.1MHz.png)
+
 ## Beam vs Dipole at 10 m (7.1 MHz)
 
 Parameters: frequency=7.1 MHz; height=10.0 m; detune=6.0%; spacing=20'; ground=average; segments=21; radius=0.001 m; el=30.0°

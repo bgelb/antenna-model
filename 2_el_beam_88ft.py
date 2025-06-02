@@ -241,7 +241,32 @@ def main():
                 best_fb = fb
                 best_df = df
         best_detunes[h] = best_df
-
+    # Multi-height beam-only patterns at 7.1 MHz for heights 10m, 15m, 20m
+    elev_multi: Dict[float, List[Dict[str, float]]] = {}
+    az_multi: Dict[float, List[Dict[str, float]]] = {}
+    for h in heights_study:
+        df = best_detunes[h]
+        m = build_two_element_beam_88ft(df, segments=segments, radius=radius)
+        res = sim.simulate_pattern(
+            m, freq_mhz=7.1, height_m=h, ground=ground,
+            el_step=1.0, az_step=360.0
+        )
+        elev_multi[h] = res['pattern']
+        az_multi[h] = sim.simulate_azimuth_pattern(
+            m, freq_mhz=7.1, height_m=h, ground=ground,
+            el=el_fixed, az_step=5.0
+        )
+    multi_labels = [f"{h:.0f} m" for h in heights_study]
+    multi_file = os.path.join(report.report_dir, 'beam_patterns_heights_7.1MHz.png')
+    plot_polar_patterns(
+        elev_multi, az_multi, heights_study, el_fixed,
+        multi_file, args.show_gui, legend_labels=multi_labels
+    )
+    report.add_plot(
+        'Beam Patterns vs Height at 7.1 MHz',
+        multi_file,
+        parameters=f"heights={heights_study}; detunes={[best_detunes[h] for h in heights_study]}; spacing=20'; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
+    )
     # Beam vs Dipole comparison at each height for elevation study
     for h in heights_study:
         df = best_detunes[h]
