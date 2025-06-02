@@ -65,3 +65,31 @@ Parameters: height=20.0 m; ground=average; segments=21; radius=0.001 m; el=30.0�
 Parameters: height=20.0 m; ground=average; segments=21; radius=0.001 m; el=30.0°
 
 ![Polar Patterns at 3.5 MHz](polar_patterns_3.5MHz.png)
+
+## Study Pattern at 10 m
+
+Parameters: frequency=7.1 MHz; height=10.0 m; detune=6.0%; spacing=20'; ground=average; segments=21; radius=0.001 m; el=30.0°
+
+![Study Pattern at 10 m](study_pattern_10m.png)
+
+## Study Pattern at 15 m
+
+Parameters: frequency=7.1 MHz; height=15.0 m; detune=6.0%; spacing=20'; ground=average; segments=21; radius=0.001 m; el=30.0°
+
+![Study Pattern at 15 m](study_pattern_15m.png)
+
+## Study Pattern at 20 m
+
+Parameters: frequency=7.1 MHz; height=20.0 m; detune=6.0%; spacing=20'; ground=average; segments=21; radius=0.001 m; el=30.0°
+
+![Study Pattern at 20 m](study_pattern_20m.png)
+
+## Feedpoint Impedance vs Height (best detune 7.1 MHz)
+
+Parameters: spacing=20'; ground=average; segments=21; radius=0.001 m
+
+| Height (m) | Detune (%) | R (Ω) | X (Ω) | Match |
+| --- | --- | --- | --- | --- |
+| 10 | 6.0% | 85.07 | 658.53 | C=34.0 pF |
+| 15 | 6.0% | 125.11 | 653.93 | C=34.3 pF |
+| 20 | 6.0% | 137.81 | 622.50 | C=36.0 pF |

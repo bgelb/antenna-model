@@ -122,7 +122,7 @@ def main():
         else:
             L7 = abs(X7)/(2*math.pi*7.1e6)
             match7 = f"L={L7*1e9:.1f} nH"
-        # Series compensation for 3.5
+        # Series compensation for 3.5 MHz
         if X3 > 0:
             C3 = 1/(2*math.pi*3.5e6*X3)
             match3 = f"C={C3*1e12:.1f} pF"
@@ -223,6 +223,73 @@ def main():
             output_file,
             parameters=f"height={height_m} m; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
         )
+
+    # === Elevation study: best detune vs height at 7.1 MHz ===
+    heights_study = [10.0, 15.0, 20.0]
+    best_detunes: Dict[float, float] = {}
+    for h in heights_study:
+        best_fb = float('-inf')
+        best_df = None
+        for df in detune_fracs:
+            m = build_two_element_beam_88ft(df, segments=segments, radius=radius)
+            azres = sim.simulate_azimuth_pattern(
+                m, freq_mhz=7.1, height_m=h, ground=ground, el=el_fixed, az_step=5.0
+            )
+            fwd = next(p['gain'] for p in azres if abs(p['az']) < 1e-6)
+            back = next(p['gain'] for p in azres if abs(p['az'] - 180.0) < 1e-6)
+            fb = fwd - back
+            if fb > best_fb:
+                best_fb = fb
+                best_df = df
+        best_detunes[h] = best_df
+
+    # Pattern plots for each height at best detune
+    for h in heights_study:
+        df = best_detunes[h]
+        m = build_two_element_beam_88ft(df, segments=segments, radius=radius)
+        elev_pat = sim.simulate_pattern(
+            m, freq_mhz=7.1, height_m=h, ground=ground,
+            el_step=1.0, az_step=360.0
+        )['pattern']
+        az_pat = sim.simulate_azimuth_pattern(
+            m, freq_mhz=7.1, height_m=h, ground=ground,
+            el=el_fixed, az_step=5.0
+        )
+        label = f"{h:.0f} m (detune={df*100:.1f}%)"
+        output_file = os.path.join(report.report_dir, f'study_pattern_{int(h)}m.png')
+        plot_polar_patterns(
+            {h: elev_pat}, {h: az_pat}, [h], el_fixed,
+            output_file, args.show_gui, legend_labels=[label]
+        )
+        report.add_plot(
+            f'Study Pattern at {h:.0f} m', output_file,
+            parameters=f"frequency=7.1 MHz; height={h} m; detune={df*100:.1f}%; spacing=20'; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
+        )
+
+    # Feedpoint impedance vs height for best detune
+    imp_study: List[List[str]] = []
+    for h in heights_study:
+        df = best_detunes[h]
+        m = build_two_element_beam_88ft(df, segments=segments, radius=radius)
+        R, X = sim.simulate_pattern(
+            m, freq_mhz=7.1, height_m=h, ground=ground,
+            el_step=45.0, az_step=360.0
+        )['impedance']
+        if X > 0:
+            C = 1/(2*math.pi*7.1e6*X)
+            match = f"C={C*1e12:.1f} pF"
+        else:
+            L = abs(X)/(2*math.pi*7.1e6)
+            match = f"L={L*1e9:.1f} nH"
+        imp_study.append([
+            f"{h:.0f}", f"{df*100:.1f}%", f"{R:.2f}", f"{X:.2f}", match
+        ])
+    report.add_table(
+        'Feedpoint Impedance vs Height (best detune 7.1 MHz)',
+        ['Height (m)', 'Detune (%)', 'R (Ω)', 'X (Ω)', 'Match'],
+        imp_study,
+        parameters=f"spacing=20'; ground={ground}; segments={segments}; radius={radius} m"
+    )
 
     report.save()
 
