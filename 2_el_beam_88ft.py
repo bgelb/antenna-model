@@ -122,6 +122,13 @@ def main():
         else:
             L7 = abs(X7)/(2*math.pi*7.1e6)
             match7 = f"L={L7*1e9:.1f} nH"
+        # Series compensation for 3.5 MHz
+        if X3 > 0:
+            C3 = 1/(2*math.pi*3.5e6*X3)
+            match3 = f"C={C3*1e12:.1f} pF"
+        else:
+            L3 = abs(X3)/(2*math.pi*3.5e6)
+            match3 = f"L={L3*1e9:.1f} nH"
         imp7_rows.append([label, f"{R7:.2f}", f"{X7:.2f}", match7])
         imp3_rows.append([label, f"{R3:.2f}", f"{X3:.2f}", match3])
     report.add_table(
@@ -236,53 +243,79 @@ def main():
                 best_df = df
         best_detunes[h] = best_df
 
-    # Combined study patterns for heights 10m, 15m, and 20m at 7.1 MHz
-    elev_study_pats: Dict[float, List[Dict[str, float]]] = {}
-    az_study_pats: Dict[float, List[Dict[str, float]]] = {}
-    legend_labels: List[str] = []
+    # Combined study patterns for heights 10m, 15m, and 20m at 7.1 MHz (beam + dipole)
+    elev_study_pats: Dict[str, List[Dict[str, float]]] = {}
+    az_study_pats: Dict[str, List[Dict[str, float]]] = {}
+    labels: List[str] = []
     for h in heights_study:
         df = best_detunes[h]
-        model = build_two_element_beam_88ft(df, segments=segments, radius=radius)
-        elev_study_pats[h] = sim.simulate_pattern(
-            model, freq_mhz=7.1, height_m=h, ground=ground,
+        # Beam pattern
+        beam_model = build_two_element_beam_88ft(df, segments=segments, radius=radius)
+        elev_study_pats[f"{h:.0f} m beam"] = sim.simulate_pattern(
+            beam_model, freq_mhz=7.1, height_m=h, ground=ground,
             el_step=1.0, az_step=360.0
         )['pattern']
-        az_study_pats[h] = sim.simulate_azimuth_pattern(
-            model, freq_mhz=7.1, height_m=h, ground=ground,
+        az_study_pats[f"{h:.0f} m beam"] = sim.simulate_azimuth_pattern(
+            beam_model, freq_mhz=7.1, height_m=h, ground=ground,
             el=el_fixed, az_step=5.0
         )
-        legend_labels.append(f"{h:.0f} m (detune={df*100:.1f}%)")
+        labels.append(f"{h:.0f} m beam")
+        # Dipole reference pattern
+        dip_length = resonant_dipole_length(7.1)
+        dip_model = build_dipole_model(total_length=dip_length, segments=segments, radius=radius)
+        elev_study_pats[f"{h:.0f} m dipole"] = sim.simulate_pattern(
+            dip_model, freq_mhz=7.1, height_m=h, ground=ground,
+            el_step=1.0, az_step=360.0
+        )['pattern']
+        az_study_pats[f"{h:.0f} m dipole"] = sim.simulate_azimuth_pattern(
+            dip_model, freq_mhz=7.1, height_m=h, ground=ground,
+            el=el_fixed, az_step=5.0
+        )
+        labels.append(f"{h:.0f} m dipole")
     study_output = os.path.join(report.report_dir, 'study_patterns_heights_7.1MHz.png')
     plot_polar_patterns(
-        elev_study_pats, az_study_pats, heights_study, el_fixed,
-        study_output, args.show_gui, legend_labels=legend_labels
+        elev_study_pats, az_study_pats, labels, el_fixed,
+        study_output, args.show_gui, legend_labels=labels
     )
     report.add_plot(
-        f'Combined Study Patterns at Heights (7.1 MHz)',
+        'Combined Study Patterns at Heights (7.1 MHz)',
         study_output,
         parameters=f"heights={heights_study}; detunes={[best_detunes[h] for h in heights_study]}; spacing=20'; ground={ground}; segments={segments}; radius={radius} m; el={el_fixed}°"
     )
 
-    # Feedpoint impedance vs height for best detune
+    # Feedpoint impedance vs height for best detune and dipole reference
     imp_study: List[List[str]] = []
     for h in heights_study:
         df = best_detunes[h]
-        m = build_two_element_beam_88ft(df, segments=segments, radius=radius)
-        R, X = sim.simulate_pattern(
-            m, freq_mhz=7.1, height_m=h, ground=ground,
+        # Beam impedance
+        beam_model = build_two_element_beam_88ft(df, segments=segments, radius=radius)
+        Rb, Xb = sim.simulate_pattern(
+            beam_model, freq_mhz=7.1, height_m=h, ground=ground,
             el_step=45.0, az_step=360.0
         )['impedance']
-        if X > 0:
-            C = 1/(2*math.pi*7.1e6*X)
-            match = f"C={C*1e12:.1f} pF"
+        if Xb > 0:
+            Cb = 1/(2*math.pi*7.1e6*Xb)
+            matchb = f"C={Cb*1e12:.1f} pF"
         else:
-            L = abs(X)/(2*math.pi*7.1e6)
-            match = f"L={L*1e9:.1f} nH"
-        imp_study.append([
-            f"{h:.0f}", f"{df*100:.1f}%", f"{R:.2f}", f"{X:.2f}", match
-        ])
+            Lb = abs(Xb)/(2*math.pi*7.1e6)
+            matchb = f"L={Lb*1e9:.1f} nH"
+        imp_study.append([f"{h:.0f}", f"{df*100:.1f}%", f"{Rb:.2f}", f"{Xb:.2f}", matchb])
+        # Dipole impedance
+        dip_length = resonant_dipole_length(7.1)
+        dip_model = build_dipole_model(total_length=dip_length, segments=segments, radius=radius)
+        Rd, Xd = sim.simulate_pattern(
+            dip_model, freq_mhz=7.1, height_m=h, ground=ground,
+            el_step=45.0, az_step=360.0
+        )['impedance']
+        if Xd > 0:
+            Cd = 1/(2*math.pi*7.1e6*Xd)
+            matchd = f"C={Cd*1e12:.1f} pF"
+        else:
+            Ld = abs(Xd)/(2*math.pi*7.1e6)
+            matchd = f"L={Ld*1e9:.1f} nH"
+        imp_study.append([f"{h:.0f}", "dipole", f"{Rd:.2f}", f"{Xd:.2f}", matchd])
     report.add_table(
-        'Feedpoint Impedance vs Height (best detune 7.1 MHz)',
+        'Feedpoint Impedance vs Height (best detune 7.1 MHz + dipole)',
         ['Height (m)', 'Detune (%)', 'R (Ω)', 'X (Ω)', 'Match'],
         imp_study,
         parameters=f"spacing=20'; ground={ground}; segments={segments}; radius={radius} m"
