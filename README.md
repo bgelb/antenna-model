@@ -49,8 +49,8 @@ result = sim.simulate_pattern(
     az_step=10.0,
 )
 impedance = result['impedance']  # (R, X)
-pattern = result['pattern']      # list of {{'el', 'az', 'gain'}}
-``` 
+pattern = result['pattern']      # list of {'el', 'az', 'gain'}
+```
 
 ### Key API
 
